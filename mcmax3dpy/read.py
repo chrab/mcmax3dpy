@@ -156,23 +156,28 @@ class Zone(object):
     for ip in range(self.np):
       for it in range(self.nt):
         for ir in range(self.nr):
-          sumnipart=0
-          avgrad=0          
+          sumnipart=0.0
+          avgrad=0.0
+          avg2rad=0.0
+          avg3rad=0.0
           if not doit[ip,it,ir]:
             self.amean[ip,it,ir]=0.1 
-            continue
+            continue          
           for ipart in range(self.nsize):
             # calculate the number of particles, assuming a fixed density 
-            nipart=self.comp[0,ipart,0,ip,it,ir]/self.rhodparticle
+            nipart=self.comp[0,ipart,0,ip,it,ir]/(self.rhodparticle*self.psizes[ipart]**3.0)
             sumnipart=sumnipart+nipart
             avgrad=avgrad+nipart*self.psizes[ipart]
+            avg2rad=avg2rad+nipart*self.psizes[ipart]**2.0
+            avg3rad=avg3rad+nipart*self.psizes[ipart]**3.0
           #print(sumnipart,ntotpart)     
           # FIXME: at the borders of the domain the dust density is very low so check for this
           # seams only to be a problem in the radial direction
           if (self.rhog[ip,it,ir]/self.rhod[ip,it,ir])>1e17:
             self.amean[ip,it,ir]=self.amean[ip,it,ir-1]
-          else:     
-            self.amean[ip,it,ir]=avgrad/sumnipart
+          else:                 
+            self.amean[ip,it,ir]=(avg3rad/sumnipart)**(1.0/3.0) # this is the amean output from prodimo
+            
             
           #print(self.amean[ip,ir,it])
             
