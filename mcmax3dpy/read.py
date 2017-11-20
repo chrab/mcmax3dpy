@@ -48,7 +48,13 @@ class Zone(object):
     self.chi=None
     self.AVrad=None
     
+    
+    # a mean grain radius
     self.amean=None
+    # dust size moments, used for the chemistry
+    self.a1mom=None
+    self.a2mom=None
+    self.a3mom=None
     
     self.species=None
     self.abundances=None
@@ -148,36 +154,50 @@ class Zone(object):
     """
     
     
-    print("INFO: Calculate mean particles sizes ...")
+    print("INFO: Calculate dust moments ...")
     self.amean=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.a1mom=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.a2mom=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.a3mom=numpy.zeros(shape=(self.np,self.nt,self.nr))
     
     doit=(self.rhog >self.minrho)
+    
+    
+    psizes2=self.psizes[:]**2.0
+    psizes3=self.psizes[:]**3.0
+    
     
     for ip in range(self.np):
       for it in range(self.nt):
         for ir in range(self.nr):
           sumnipart=0.0
-          avgrad=0.0
-          avg2rad=0.0
-          avg3rad=0.0
+          mom1=0.0
+          mom2=0.0
+          mom3=0.0
           if not doit[ip,it,ir]:
             self.amean[ip,it,ir]=0.1 
             continue          
           for ipart in range(self.nsize):
             # calculate the number of particles, assuming a fixed density 
-            nipart=self.comp[0,ipart,0,ip,it,ir]/(self.rhodparticle*self.psizes[ipart]**3.0)
+            nipart=self.comp[0,ipart,0,ip,it,ir]/(self.rhodparticle*psizes3[ipart])
             sumnipart=sumnipart+nipart
-            avgrad=avgrad+nipart*self.psizes[ipart]
-            avg2rad=avg2rad+nipart*self.psizes[ipart]**2.0
-            avg3rad=avg3rad+nipart*self.psizes[ipart]**3.0
+            mom1=mom1+nipart*self.psizes[ipart]
+            mom2=mom2+nipart*psizes2[ipart]
+            mom3=mom3+nipart*psizes3[ipart]
           #print(sumnipart,ntotpart)     
           # FIXME: at the borders of the domain the dust density is very low so check for this
           # seams only to be a problem in the radial direction
-          if (self.rhog[ip,it,ir]/self.rhod[ip,it,ir])>1e17:
-            self.amean[ip,it,ir]=self.amean[ip,it,ir-1]
-          else:                 
-            self.amean[ip,it,ir]=(avg3rad/sumnipart)**(1.0/3.0) # this is the amean output from prodimo
-            
+#          if (self.rhog[ip,it,ir]/self.rhod[ip,it,ir])>1e17:
+#            self.amean[ip,it,ir]=self.amean[ip,it,ir-1]
+#            self.a1mom[ip,it,ir]=(mom1/sumnipart)
+#            self.a2mom[ip,it,ir]=(mom2/sumnipart)
+#            self.a3mom[ip,it,ir]=(mom3/sumnipart)
+#          else:                 
+          self.amean[ip,it,ir]=(mom3/sumnipart)**(1.0/3.0) # this is the amean output from prodimo
+          self.a1mom[ip,it,ir]=(mom1/sumnipart)
+          self.a2mom[ip,it,ir]=(mom2/sumnipart)
+          self.a3mom[ip,it,ir]=(mom3/sumnipart)
+          
             
           #print(self.amean[ip,ir,it])
             
