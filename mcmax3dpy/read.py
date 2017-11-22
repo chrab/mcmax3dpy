@@ -3,12 +3,16 @@ Created on 15 Nov 2017
 
 @author: rab
 '''
+from __future__ import print_function
+from __future__ import division 
+from __future__ import unicode_literals
 
 from astropy.io import fits
 import astropy.units as u
 import numpy
 import glob
 import os
+import math
 
 class Zone(object):
   """
@@ -43,6 +47,7 @@ class Zone(object):
     
     self.rhod=None
     self.rhog=None
+    self.rhogVer=None # Vertical column density integrataded from the top to the midplane of the disk
     self.temp=None
     
     self.chi=None
@@ -58,6 +63,9 @@ class Zone(object):
     
     self.species=None
     self.abundances=None
+    # the vertical column densities for the chemical species
+    # shape(np,nt,nr,nspecies)
+    self.chem_cd=None
   
   # TODO maybe make the read routine a method function (like in the prodimo scripts)
   def read(self,infile):
@@ -113,6 +121,10 @@ class Zone(object):
     # FIXME: disable for the moment
     self.psizes=self.read_particle_sizes(self.nsize)
     self.calc_amean()
+    
+    print("INFO: Calculate vertical column densities ...")
+    self.rhogVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.integrate_vertical(self.rhog,self.rhogVer)
     
     fitsMCMax3D.close()
     
@@ -203,6 +215,51 @@ class Zone(object):
             
           #print(self.amean[ip,ir,it])
 
+  def integrate_vertical(self,intfield,outfield):
+    """
+    Integrates a quantity (intfield) in vertical direction from the top
+    to the midplane of the disk for each field in the grid. 
+    
+    Currently the implementation is rather approximate
+    """
+    
+    pih=math.pi/2.0
+    # first find the midplane (close to the midplane)
+    # FIXME: check what happends if nt is odd    
+    imid = int(self.nt/2-1)  
+      
+    thetagrid=numpy.abs(pih-self.theta[0,:,0])
+    # over this indices the integration is done, where it is assumed
+    # that the theta grid is symetrical
+    thetaidx=range(0,imid+1)
+    
+    for ir in range(self.nr):    
+      # take the closest theta to the midplane
+      rmid=self.r[0,imid,ir]*math.cos(thetagrid[imid])
+      
+      zgrid=rmid*numpy.tan(thetagrid)
+              
+      itprev=None
+      irprev=None
+      # calculate the highest point (avoid theta=0 and pi)    
+      # now step to the next point    
+      for it in thetaidx:
+        r=math.sqrt(rmid**2.0+zgrid[it]**2.0)
+        irz=numpy.argmin(numpy.abs(r-self.r[0,it,:]))
+        
+        # do the integration
+        if itprev is not None: 
+          dz=((zgrid[itprev]-zgrid[it])*u.au).cgs.value
+          
+          outfield[:,it,irz]=outfield[:,itprev,irprev]+0.5*(intfield[:,itprev,irprev]+intfield[:,it,ir])*dz
+          # other theta grid half
+          itoh=self.nt-(it+1)
+          itohprev=self.nt-(itprev+1)
+          outfield[:,itoh,irz]=outfield[:,itohprev,irprev]+0.5*(intfield[:,itohprev,irprev]+intfield[:,itoh,ir])*dz
+          
+        itprev=it
+        irprev=irz
+
 
 def read_abun_fits(fname):
   
@@ -227,9 +284,6 @@ def read_zones(directory):
   Tries to read all Zones fits files in the given directory and returns the 
   results in a list. 
   """
-
-  
-  
   sortedZones=sorted(glob.glob(directory+"/Zone*.fits.gz"))
   print(sortedZones)
   
@@ -238,14 +292,26 @@ def read_zones(directory):
     zone=Zone()
     zone.read(zoneFile)
     
-    # also check for the abundances    
+    # also check for the abundances
+    # move the whole stuff in a separate routine and pass with the zone as 
+    # argument    
     if os.path.isfile(zone.fname_abun):
       print("INFO: Read abundances "+zone.fname_abun)
       species,abun=read_abun_fits(zone.fname_abun)
       zone.species=species
       zone.abundances=abun
       
+      zone.chem_cd=numpy.zeros(shape=(zone.np,zone.nt,zone.nr,len(zone.species)))
+      # calculate the vertical column densities
+      for ispec in range(len(species)):
+        zone.integrate_vertical(zone.rhog/2.2844156663114814e-24*zone.abundances[:,:,:,ispec],
+                       zone.chem_cd[:,:,:,ispec])
+      
+      
     zones.append(zone)
     
   return zones
+
+
+
             
