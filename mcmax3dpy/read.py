@@ -179,43 +179,32 @@ class Zone(object):
     psizes3=self.psizes[:]**3.0
     
     
+    
     for ip in range(self.np):
       for it in range(self.nt):
         for ir in range(self.nr):
-          sumnipart=0.0
-          mom1=0.0
-          mom2=0.0
-          mom3=0.0
+
           if not doit[ip,it,ir]:
             self.amean[ip,it,ir]=0.1 
-            continue          
-          for ipart in range(self.nsize):
-            # calculate the number of particles, assuming a fixed density 
-            nipart=self.comp[0,ipart,0,ip,it,ir]/(self.rhodparticle*psizes3[ipart])
-            sumnipart=sumnipart+nipart
-            mom1=mom1+nipart*self.psizes[ipart]
-            mom2=mom2+nipart*psizes2[ipart]
-            mom3=mom3+nipart*psizes3[ipart]
-          #print(sumnipart,ntotpart)     
-          # FIXME: at the borders of the domain the dust density is very low so check for this
-          # seams only to be a problem in the radial direction
-#          if (self.rhog[ip,it,ir]/self.rhod[ip,it,ir])>1e17:
-#            self.amean[ip,it,ir]=self.amean[ip,it,ir-1]
-#            self.a1mom[ip,it,ir]=(mom1/sumnipart)
-#            self.a2mom[ip,it,ir]=(mom2/sumnipart)
-#            self.a3mom[ip,it,ir]=(mom3/sumnipart)
-#          else:                 
-          self.amean[ip,it,ir]=(mom3/sumnipart)**(1.0/3.0) # this is the amean output from prodimo
-          self.a1mom[ip,it,ir]=(mom1/sumnipart)
-          self.a2mom[ip,it,ir]=(mom2/sumnipart)
-          self.a3mom[ip,it,ir]=(mom3/sumnipart)
+            continue
+          
+          nparts=self.comp[0,:,0,ip,it,ir]/(self.rhodparticle*psizes3[:])
+          sum_nparts= numpy.sum(nparts)
+          mom1=numpy.sum(nparts*self.psizes)
+          mom2=numpy.sum(nparts*psizes2)
+          mom3=numpy.sum(nparts*psizes3)
+
+          self.amean[ip,it,ir]=(mom3/sum_nparts)**(1.0/3.0) # this is the amean output from prodimo
+          self.a1mom[ip,it,ir]=(mom1/sum_nparts)
+          self.a2mom[ip,it,ir]=(mom2/sum_nparts)
+          self.a3mom[ip,it,ir]=(mom3/sum_nparts)
           
             
           #print(self.amean[ip,ir,it])
             
           #print(self.amean[ip,ir,it])
 
-  def integrate_vertical(self,intfield,outfield):
+  def integrate_vertical(self,intfield,outfield,chem_species=False):
     """
     Integrates a quantity (intfield) in vertical direction from the top
     to the midplane of the disk for each field in the grid. 
@@ -250,12 +239,18 @@ class Zone(object):
         # do the integration
         if itprev is not None: 
           dz=((zgrid[itprev]-zgrid[it])*u.au).cgs.value
-          
-          outfield[:,it,irz]=outfield[:,itprev,irprev]+0.5*(intfield[:,itprev,irprev]+intfield[:,it,ir])*dz
-          # other theta grid half
+
+          # indixed for other theta half
           itoh=self.nt-(it+1)
           itohprev=self.nt-(itprev+1)
-          outfield[:,itoh,irz]=outfield[:,itohprev,irprev]+0.5*(intfield[:,itohprev,irprev]+intfield[:,itoh,ir])*dz
+          
+          if chem_species:
+            outfield[:,it,irz,:]=outfield[:,itprev,irprev,:]+0.5*(intfield[:,itprev,irprev,:]+intfield[:,it,ir,:])*dz
+            outfield[:,itoh,irz,:]=outfield[:,itohprev,irprev,:]+0.5*(intfield[:,itohprev,irprev,:]+intfield[:,itoh,ir,:])*dz
+          else:
+            outfield[:,it,irz]=outfield[:,itprev,irprev]+0.5*(intfield[:,itprev,irprev]+intfield[:,it,ir])*dz
+            outfield[:,itoh,irz]=outfield[:,itohprev,irprev]+0.5*(intfield[:,itohprev,irprev]+intfield[:,itoh,ir])*dz                    
+            
           
         itprev=it
         irprev=irz
@@ -302,11 +297,14 @@ def read_zones(directory):
       zone.abundances=abun
       
       zone.chem_cd=numpy.zeros(shape=(zone.np,zone.nt,zone.nr,len(zone.species)))
+      nd=numpy.zeros(shape=(zone.np,zone.nt,zone.nr,len(zone.species)))
       # calculate the vertical column densities
-      for ispec in range(len(species)):
-        zone.integrate_vertical(zone.rhog/2.2844156663114814e-24*zone.abundances[:,:,:,ispec],
-                       zone.chem_cd[:,:,:,ispec])
-      
+      print("INFO: Calculate vertical column densities species ..")
+
+      # number densities (broadcast does not work here)
+      for i in range(len(zone.species)):
+        nd[:,:,:,i]=zone.rhog/2.2844156663114814e-24*zone.abundances[:,:,:,i]
+      zone.integrate_vertical(nd,zone.chem_cd,chem_species=True)
       
     zones.append(zone)
     
