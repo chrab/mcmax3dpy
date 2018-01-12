@@ -48,6 +48,7 @@ class Zone(object):
     self.rhod=None
     self.rhog=None
     self.rhogVer=None # Vertical column density integrataded from the top to the midplane of the disk
+    self.rhodVer=None # Vertical column density integrataded from the top to the midplane of the disk
     self.temp=None
     
     self.chi=None
@@ -125,6 +126,9 @@ class Zone(object):
     print("INFO: Calculate vertical column densities ...")
     self.rhogVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
     self.integrate_vertical(self.rhog,self.rhogVer)
+    self.rhodVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.integrate_vertical(self.rhod,self.rhodVer)
+
     
     fitsMCMax3D.close()
     
@@ -136,11 +140,16 @@ class Zone(object):
     dirn="Particles"
      
     for i in range(nsize):
-      fname=dirn+"/particle0001_"+"{:04d}".format(i+1)+"_0001_f0.71_f0.29.fits.gz"
+      # file names can be different for some reason, so try to find it
+      # FIXME: this is not a verz good solution
+      fname=dirn+"/particle0001_"+"{:04d}".format(i+1)+"_0001*.fits.gz"      
+      fname=glob.glob(fname)[0]
+      print(fname)
+      
       try:        
         fitsf=fits.open(fname)
       except FileNotFoundError:
-        fname="../"+dirn+"/particle0001_"+"{:04d}".format(i+1)+"_0001_f0.71_f0.29.fits.gz"
+        fname="../"+fname
         fitsf=fits.open(fname)
         
       #fitsf.info()
@@ -160,9 +169,6 @@ class Zone(object):
     """
     Calculate the meand dust size at each point in the disk 
     
-    Ist more or less a dummy, is not correct, now it is simply weighte by the number of particles
-    
-    FIXME: there are still hardcoded values
     """
     
     
