@@ -13,6 +13,42 @@ import numpy
 import glob
 import os
 import math
+import time
+
+
+class DataMCMax3D(object):
+  """
+  Data container for the outputs of an MCMax3D model.
+  """
+  def __init__(self,modelDir,outDir="output",name=""):
+    """
+    Parameters
+    ----------
+    modelDir : string
+      The path to the main model directory
+    outDir : string
+      The path to the output directory of the model (DEFAULT: modelDir/output)      
+    name : string
+      A name of the model (DEFAULT: "").  
+
+    Attributes
+    ----------
+          
+    """
+    self.modelDir=modelDir    
+    self.outDir=outDir
+    self.name=name
+    self.zones=None
+    """ array_like(:class:`mcmax3dpy.read.Zone`) :
+    The zones of the model. 
+    see :class:`mcmax3dpy.read.Zone` for details.
+    """    
+    self.seds=None
+    """ array_like(:class:`mcmax3dpy.read.SED`) :
+    The Spectral Energy Distribution(s) for the models (SED) 
+    see :class:`mcmax3dpy.read.SED` for details.
+    """    
+
 
 class Zone(object):
   """
@@ -120,14 +156,22 @@ class Zone(object):
       self.AVrad=fitsMCMax3D[12].data
     
     # FIXME: disable for the moment
+    print("INFO: Read particle sizes ...")
+    t = time.process_time()
     self.psizes=self.read_particle_sizes(self.nsize)
     self.calc_amean()
-    
+    print("TIME: ",time.process_time() - t)
+
+    t = time.process_time()    
     print("INFO: Calculate vertical column densities ...")
     self.rhogVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
     self.integrate_vertical(self.rhog,self.rhogVer)
     self.rhodVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
     self.integrate_vertical(self.rhod,self.rhodVer)
+    print("TIME: ",time.process_time() - t)
+  
+
+
 
     
     fitsMCMax3D.close()
@@ -142,9 +186,8 @@ class Zone(object):
     for i in range(nsize):
       # file names can be different for some reason, so try to find it
       # FIXME: this is not a verz good solution
-      fname=dirn+"/particle0001_"+"{:04d}".format(i+1)+"_0001*.fits.gz"      
+      fname=dirn+"/particle0001_"+"{:04d}".format(i+1)+"_0001*.fits.gz"
       fname=glob.glob(fname)[0]
-      print(fname)
       
       try:        
         fitsf=fits.open(fname)
@@ -180,11 +223,9 @@ class Zone(object):
     
     doit=(self.rhog >self.minrho)
     
-    
     psizes2=self.psizes[:]**2.0
     psizes3=self.psizes[:]**3.0
-    
-    
+    onethird=1.0/3.0
     
     for ip in range(self.np):
       for it in range(self.nt):
@@ -200,7 +241,7 @@ class Zone(object):
           mom2=numpy.sum(nparts*psizes2)
           mom3=numpy.sum(nparts*psizes3)
 
-          self.amean[ip,it,ir]=(mom3/sum_nparts)**(1.0/3.0) # this is the amean output from prodimo
+          self.amean[ip,it,ir]=(mom3/sum_nparts)**(onethird) # this is the amean output from prodimo
           self.a1mom[ip,it,ir]=(mom1/sum_nparts)
           self.a2mom[ip,it,ir]=(mom2/sum_nparts)
           self.a3mom[ip,it,ir]=(mom3/sum_nparts)
@@ -219,11 +260,13 @@ class Zone(object):
     """
     
     pih=math.pi/2.0
+    tocm=(1.0*u.au).cgs.value
     # first find the midplane (close to the midplane)
     # FIXME: check what happends if nt is odd    
     imid = int(self.nt/2-1)  
       
     thetagrid=numpy.abs(pih-self.theta[0,:,0])
+    tanthetagrid=numpy.tan(thetagrid)
     # over this indices the integration is done, where it is assumed
     # that the theta grid is symetrical
     thetaidx=range(0,imid+1)
@@ -232,7 +275,7 @@ class Zone(object):
       # take the closest theta to the midplane
       rmid=self.r[0,imid,ir]*math.cos(thetagrid[imid])
       
-      zgrid=rmid*numpy.tan(thetagrid)
+      zgrid=rmid*tanthetagrid
               
       itprev=None
       irprev=None
@@ -244,7 +287,7 @@ class Zone(object):
         
         # do the integration
         if itprev is not None: 
-          dz=((zgrid[itprev]-zgrid[it])*u.au).cgs.value
+          dz=(zgrid[itprev]-zgrid[it])*tocm
 
           # indixed for other theta half
           itoh=self.nt-(it+1)
@@ -255,11 +298,21 @@ class Zone(object):
             outfield[:,itoh,irz,:]=outfield[:,itohprev,irprev,:]+0.5*(intfield[:,itohprev,irprev,:]+intfield[:,itoh,ir,:])*dz
           else:
             outfield[:,it,irz]=outfield[:,itprev,irprev]+0.5*(intfield[:,itprev,irprev]+intfield[:,it,ir])*dz
-            outfield[:,itoh,irz]=outfield[:,itohprev,irprev]+0.5*(intfield[:,itohprev,irprev]+intfield[:,itoh,ir])*dz                    
+            outfield[:,itoh,irz]=outfield[:,itohprev,irprev]+0.5*(intfield[:,itohprev,irprev]+intfield[:,itoh,ir])*dz
             
           
         itprev=it
         irprev=irz
+
+class SED(object):
+  """ 
+  Data container for one SED output of MCMax  
+  """
+  def __init__(self):
+    self.wl=None
+    self.nu=None
+    self.fluxJy=None
+  
 
 
 def read_abun_fits(fname):
@@ -279,12 +332,46 @@ def read_abun_fits(fname):
   
   return species,abun
 
+
+def read_MCSEDs(directory):  
+  """
+  Tries to read all MC Seds in the give directory and returns them as a list. 
+
+  Parameters
+  ----------
+  directory : str 
+    the directory to search for the SEDs 
+
+  Returns
+  -------
+  array_like(:class:`mcmax3dpy.read.SED`)
+    a list of SEDs 
+  """
+  fseds=sorted(glob.glob(directory+"/MCSpec*.dat"))
+  if fseds is None: 
+    return None
+
+  seds=list()  
+  for fsed in fseds:
+    data=numpy.loadtxt(fsed)
+    sed=SED()
+    sed.wl=data[:,0]
+    sed.fluxJy=data[:,1]
+    seds.append(sed)
+
+  return seds
+
             
 def read_zones(directory):
   """
   Tries to read all Zones fits files in the given directory and returns the 
   results in a list. 
   """
+ 
+  #do some stuff
+  
+    
+  
   sortedZones=sorted(glob.glob(directory+"/Zone*.fits.gz"))
   print(sortedZones)
   
@@ -310,7 +397,9 @@ def read_zones(directory):
       # number densities (broadcast does not work here)
       for i in range(len(zone.species)):
         nd[:,:,:,i]=zone.rhog/2.2844156663114814e-24*zone.abundances[:,:,:,i]
+      t = time.process_time()  
       zone.integrate_vertical(nd,zone.chem_cd,chem_species=True)
+      print("TIME integrate: ",time.process_time() - t)
       
     zones.append(zone)
     

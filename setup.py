@@ -101,7 +101,7 @@ setup(
     # pip to create the appropriate form of executable for the target platform.    
 #     entry_points={
 #       'console_scripts': [
-#         'pplot=prodimopy.script_plot:main',
+#         'pplot=prodimopy.py:main',
 #         'pplot_models=prodimopy.script_plot_models:main',
 #         'pcompare=prodimopy.script_compare:main'
 #          ],
