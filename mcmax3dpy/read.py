@@ -77,6 +77,10 @@ class Zone(object):
     self.theta_grid=None
     self.phi_grid=None
         # 
+    self.x0=None
+    self.y0=None
+    self.z0=None
+    
     self.x=None
     self.y=None
     self.z=None
@@ -114,6 +118,11 @@ class Zone(object):
     
     fitsMCMax3D=fits.open(infile)
     fitsMCMax3D.info()
+    
+    self.x0=float(fitsMCMax3D[0].header["X0"])
+    self.y0=float(fitsMCMax3D[0].header["Y0"])
+    self.z0=float(fitsMCMax3D[0].header["Z0"])
+    
     self.nr=int(fitsMCMax3D[0].header["NR"])
     # this is just for plotting (so that is looks nicer
     self.nt=int(fitsMCMax3D[0].header["NTHETA"])
@@ -205,6 +214,11 @@ class Zone(object):
     self.x=self.r*numpy.sin(self.theta)*numpy.cos(self.phi)
     self.y=self.r*numpy.sin(self.theta)*numpy.sin(self.phi)
     self.z=self.r*numpy.cos(self.theta)
+    
+    # also aplly the translation 
+    self.x=self.x+self.x0
+    self.y=self.y+self.y0
+    self.z=self.z+self.z0
     
     return
   
