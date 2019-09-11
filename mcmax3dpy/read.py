@@ -146,13 +146,6 @@ class Zone(object):
     # convert to cartesian
     self._set_cartesian_coord()
 
-        
-    self.theta=fitsMCMax3D[0].data[1,:,:,:]
-    self.phi=fitsMCMax3D[0].data[2,:,:,:]
-    # convert to cartesian
-    self._set_cartesian_coord()
-
-
     # read the density
     self.rhod=fitsMCMax3D[4].data
     self.temp=fitsMCMax3D[5].data
@@ -164,7 +157,6 @@ class Zone(object):
     if len(fitsMCMax3D)>12:
       self.AVrad=fitsMCMax3D[12].data
     
-    # FIXME: disable for the moment
     print("INFO: Read particle sizes ...")
     t = time.process_time()
     self.psizes=self.read_particle_sizes(self.nsize)
@@ -178,10 +170,6 @@ class Zone(object):
     self.rhodVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
     self.integrate_vertical(self.rhod,self.rhodVer)
     print("TIME: ",time.process_time() - t)
-  
-
-
-
     
     fitsMCMax3D.close()
     
@@ -194,7 +182,7 @@ class Zone(object):
      
     for i in range(nsize):
       # file names can be different for some reason, so try to find it
-      # FIXME: this is not a verz good solution
+      # FIXME: this is not a very good solution
       fname=dirn+"/particle0001_"+"{:04d}".format(i+1)+"_0001*.fits.gz"
       fname=glob.glob(fname)[0]
       
