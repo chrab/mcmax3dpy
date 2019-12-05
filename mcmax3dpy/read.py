@@ -157,11 +157,11 @@ class Zone(object):
     if len(fitsMCMax3D)>12:
       self.AVrad=fitsMCMax3D[12].data
     
-    print("INFO: Read particle sizes ...")
-    t = time.process_time()
-    self.psizes=self.read_particle_sizes(self.nsize)
-    self.calc_amean()
-    print("TIME: ",time.process_time() - t)
+#     print("INFO: Read particle sizes ...")
+#     t = time.process_time()
+#     self.psizes=self.read_particle_sizes(self.nsize)
+#     self.calc_amean()
+#     print("TIME: ",time.process_time() - t)
 
     t = time.process_time()    
     print("INFO: Calculate vertical column densities ...")
