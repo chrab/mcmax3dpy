@@ -38,7 +38,7 @@ python setup.py develop
 ```
 
 This will install the package in your current python environment. 
-The develop options allows to update the python code (e.g. via git) without the need to reinstall the package.
+With develop option you can update mcmax3dpy (e.g. via git,see below) without the need to reinstall the package.
 
 If you do not have root access to install python packages, this should work
 
