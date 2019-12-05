@@ -25,7 +25,7 @@ setup(
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://bitbucket.org/cheesyog/prodimopy',
+    url='https://github.com/chrab/mcmax3dpy',
 
     # Author details
     author='Christian Rab',
@@ -51,7 +51,6 @@ setup(
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
     ],
 
@@ -69,10 +68,10 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     # FIXME: include proper version numbers
     install_requires=[
-                      'matplotlib',
-                      'numpy',
-                      'scipy',
-                      'astropy'],
+                      'astropy>2',
+                      'matplotlib>2',
+                      'numpy',   # no special requirements, but astropy has some
+                      'scipy'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
