@@ -60,9 +60,7 @@ Documentation
 =============
 Please check out the documentation! Click on the badge!
 
-.. image:: https://readthedocs.org/projects/mcmax3dpy/badge/?version=latest
-  :target: https://mcmax3dpy.readthedocs.io/en/latest/?badge=latest
-  :alt: Documentation Status
+[![Documentation Status](https://readthedocs.org/projects/mcmax3dpy/badge/?version=latest)](https://mcmax3dpy.readthedocs.io/en/latest/?badge=latest)
 
 
 .. _anaconda: https://www.anaconda.com/distribution/
