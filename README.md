@@ -25,33 +25,34 @@ Currently the easiest way to use it is to clone this repository and install the 
 * change into a directory of your choice and 
 * clone the repository 
 
-::
 
+```
   git clone https://github.com/chrab/mcmax3dpy.git
+``` 
  
 * change into the newly created mcmax3dpy directory and type:
 
-::
 
-  python setup.py develop
+```
+python setup.py develop
+```
 
 This will install the package in your current python environment (should be the one you want to use for ProDiMo). 
 The develop options allows to update the python code (e.g. via git) without the need to reinstall the package.
 
 If you do not have root access to install python packages, this should work
 
-::
-
-  python setup.py develop --user
-
+```
+python setup.py develop --user
+```
 
 Code Update
 ===========
 Simply type 
 
-::
-
-  git pull 
+```
+git pull 
+```
 
 in the mcmax3dpy directory. You can directly use the updated code (no reinstall required).
 
