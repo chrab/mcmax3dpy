@@ -14,7 +14,6 @@ import glob
 import os
 import math
 import time
-from _pylief import NONE
 
 
 class DataMCMax3D(object):

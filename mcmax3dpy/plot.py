@@ -1,8 +1,17 @@
+'''
+Created on 15 Nov 2017
+
+@author: rab
+'''
+from __future__ import print_function
+from __future__ import division 
+from __future__ import unicode_literals
+
+
 import numpy
 import matplotlib.pyplot as plt
 import math
 from matplotlib import ticker, patches
-
 
 
 def plog(array):      
