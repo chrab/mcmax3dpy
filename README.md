@@ -7,7 +7,7 @@ Any contributions are welcome!
 Requirements
 ============
 mcmax3dpy uses several additional python packages which are commonly used in the astronomical community. 
-If you use anaconda_ all this packages should be available in your python distribution. 
+If you use [anaconda](https://www.anaconda.com/distribution/) all this packages should be available in your python distribution. 
 The following packages are required
 
 * *matplotib* required for the plotting part only, version>=2 is recommended  
@@ -37,8 +37,8 @@ Currently the easiest way to use it is to clone this repository and install the 
 python setup.py develop
 ```
 
-This will install the package in your current python environment (should be the one you want to use for ProDiMo). 
-The develop options allows to update the python code (e.g. via git) without the need to reinstall the package.
+This will install the package in your current python environment. 
+With develop option you can update mcmax3dpy (e.g. via git,see below) without the need to reinstall the package.
 
 If you do not have root access to install python packages, this should work
 
@@ -60,9 +60,4 @@ Documentation
 =============
 Please check out the documentation! Click on the badge!
 
-.. image:: https://readthedocs.org/projects/mcmax3dpy/badge/?version=latest
-  :target: https://mcmax3dpy.readthedocs.io/en/latest/?badge=latest
-  :alt: Documentation Status
-
-
-.. _anaconda: https://www.anaconda.com/distribution/
+[![Documentation Status](https://readthedocs.org/projects/mcmax3dpy/badge/?version=latest)](https://mcmax3dpy.readthedocs.io/en/latest/?badge=latest)
