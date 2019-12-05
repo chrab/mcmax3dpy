@@ -7,7 +7,7 @@ Any contributions are welcome!
 Requirements
 ============
 mcmax3dpy uses several additional python packages which are commonly used in the astronomical community. 
-If you use anaconda_ all this packages should be available in your python distribution. 
+If you use [anaconda](https://www.anaconda.com/distribution/) all this packages should be available in your python distribution. 
 The following packages are required
 
 * *matplotib* required for the plotting part only, version>=2 is recommended  
@@ -61,6 +61,3 @@ Documentation
 Please check out the documentation! Click on the badge!
 
 [![Documentation Status](https://readthedocs.org/projects/mcmax3dpy/badge/?version=latest)](https://mcmax3dpy.readthedocs.io/en/latest/?badge=latest)
-
-
-.. _anaconda: https://www.anaconda.com/distribution/
