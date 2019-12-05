@@ -37,7 +37,7 @@ Currently the easiest way to use it is to clone this repository and install the 
 python setup.py develop
 ```
 
-This will install the package in your current python environment (should be the one you want to use for ProDiMo). 
+This will install the package in your current python environment. 
 The develop options allows to update the python code (e.g. via git) without the need to reinstall the package.
 
 If you do not have root access to install python packages, this should work
