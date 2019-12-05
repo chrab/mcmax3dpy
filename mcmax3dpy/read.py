@@ -485,7 +485,7 @@ def read_particle_sizes(directory):
   FIXME: this routine can currently only deal with one particle type and one temperatur.
   
   
-  Returns:
+  Returns
   -------
   array_like(float,dim=1)
     Returns a list with the different particle sizes.

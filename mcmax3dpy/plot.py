@@ -17,8 +17,8 @@ def plot_cuts_zones(zones,fieldname,zlim=[None,None],zlabel=None,clevels=None,pa
   """
   Plots the xz (rtheta) and the xy (rphi) planes considering all zones.
   
-  Parameters:
-  -----------
+  Parameters
+  ----------
   zones : array_like(ndim=1)
     A list of the zones that should be plotted.
   
