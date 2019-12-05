@@ -14,13 +14,14 @@ import glob
 import os
 import math
 import time
+from _pylief import NONE
 
 
 class DataMCMax3D(object):
   """
   Data container for the outputs of an MCMax3D model.
   """
-  def __init__(self,modelDir,outDir="output",name=""):
+  def __init__(self,modelDir=".",outDir=None,name=""):
     """
     Parameters
     ----------
@@ -31,70 +32,162 @@ class DataMCMax3D(object):
     name : string
       A name of the model (DEFAULT: "").  
 
+    
     Attributes
-    ----------
-          
+    ----------   
     """
     self.modelDir=modelDir    
+    """ string :
+    The directory of the model.
+    """
     self.outDir=outDir
+    """ string :
+    The output directory of the model. DEFAULT: `None`
+    """
+    self._dataDir=modelDir
+        
     self.name=name
+    """ string :
+    An optional name for the model. DEFAULT: empty string
+    """
     self.zones=None
     """ array_like(:class:`mcmax3dpy.read.Zone`) :
     The zones of the model. 
     see :class:`mcmax3dpy.read.Zone` for details.
     """    
-    self.seds=None
+    self.MCseds=None
     """ array_like(:class:`mcmax3dpy.read.SED`) :
-    The Spectral Energy Distribution(s) for the models (SED) 
+    The MonteCarl Spectral Energy Distribution(s) for the models (SED) 
     see :class:`mcmax3dpy.read.SED` for details.
-    """    
-
+    """ 
+    self.psizes=None   
+    """ array_like(float,ndim=1) :
+    array with the global dust sizes.
+    """  
+    
+    if outDir is not None:
+      self._dataDir=self._dataDir+"/"+outDir
+      
+      
+  def __str__(self):
+    output = "Info MCMax3D model \n"
+    output += "Name: " + self.name
+    output += "\nOutputdirectory: " + self._dataDir
+    output += "\nZones: " + str(len(self.zones))
+    output += " MCseds: " + str(len(self.MCseds))
+    output += "\n"
+    return output   
+   
+      
 
 class Zone(object):
   """
   Data structure for an MCMax3D Zone.
    
-  Currently only works for a spherical grid
+  Currently only works for a spherical grid.
+  
+  Attributes
+  ----------
   """
-   
   def __init__(self):
     self.fname=None
     self.fname_abun=None
     self.minrho=1.e-22 #g/cm^-3
-    self.rhodparticle=1.98996067e0 #g/cm^3    
+    # FIXME: 
+    self.rhodparticle=1.98996067e0 #g/cm^3 
+    """ float :
+    The density of a dust particle. 
+    TODO: still harcoded!!!
+    """   
     self.nr=None
+    """ int :
+    Number of radial grid points.
+    """   
     self.nt=None
+    """ int :
+    Number of theta grid points.
+    """   
     self.np=None
+    """ int :
+    Number of phi grid points (azimuthal).
+    """   
     self.nsize=None
-    self.psizes=None # array of the mean dust radii for each size bin
     self.comp=None # the dust particles
 
     self.r=None
+    """ array_like(float,ndim=3) :
+    The radial grid points.
+    `UNIT:` au, `DIMS:` (np,nt,nr)
+    """   
     self.theta=None
+    """ array_like(float,ndim=3) :
+    The theta grid points.
+    `UNIT:` rad, `DIMS:` (np,nt,nr)
+    """   
     self.phi=None
-
+    """ array_like(float,ndim=3) :
+    The theta grid points.
+    `UNIT:` rad, `DIMS:` (np,nt,nr)
+    """   
     self.r_grid=None
     self.theta_grid=None
     self.phi_grid=None
         # 
     self.x0=None
+    """ float :
+    The x zero point of this zones.
+    `UNIT:` au
+    """       
     self.y0=None
+    """ float :
+    The y zero point of this zones.
+    `UNIT:` au
+    """       
     self.z0=None
-    
+    """ float :
+    The z zero point of this zones.
+    `UNIT:` au
+    """       
     self.x=None
+    """ array_like(float,ndim=3) :
+    The cartesian x coordinates.
+    `UNIT:` au, `DIMS:` (np,nt,nr)
+    """       
     self.y=None
+    """ array_like(float,ndim=3) :
+    The cartesian y coordinates.
+    `UNIT:` au, `DIMS:` (np,nt,nr)
+    """       
     self.z=None
-    
+    """ array_like(float,ndim=3) :
+    The cartesian z coordinates.
+    `UNIT:` au, `DIMS:` (np,nt,nr)
+    """       
+  
     self.rhod=None
+    """ array_like(float,ndim=3) :
+    The dust density.
+    `UNIT:` |gcm^-3|, `DIMS:` (np,nt,nr)    
+    """
     self.rhog=None
+    """ array_like(float,ndim=3) :
+    The gas density.
+    `UNIT:` |gcm^-3|, `DIMS:` (np,nt,nr)    
+    """    
     self.rhogVer=None # Vertical column density integrataded from the top to the midplane of the disk
     self.rhodVer=None # Vertical column density integrataded from the top to the midplane of the disk
     self.temp=None
-    
+    """ array_like(float,ndim=3) :
+    The temperature.
+    `UNIT:` K, `DIMS:` (np,nt,nr)    
+    """    
     self.chi=None
+    """ array_like(float,ndim=3) :
+    The UV radiation field.
+    `UNIT:` Drain field, `DIMS:` (np,nt,nr)    
+    """      
     self.AVrad=None
-    
-    
+      
     # a mean grain radius
     self.amean=None
     # dust size moments, used for the chemistry
@@ -109,7 +202,7 @@ class Zone(object):
     self.chem_cd=None
   
   # TODO maybe make the read routine a method function (like in the prodimo scripts)
-  def read(self,infile):
+  def read(self,infile,psizes=None):
 
     print("INFO: Read fits input ...")
     self.fname=infile
@@ -124,7 +217,7 @@ class Zone(object):
     self.z0=float(fitsMCMax3D[0].header["Z0"])
     
     self.nr=int(fitsMCMax3D[0].header["NR"])
-    # this is just for plotting (so that is looks nicer
+    # this is just for plotting (so that is looks nicer)
     self.nt=int(fitsMCMax3D[0].header["NTHETA"])
     self.np=int(fitsMCMax3D[0].header["NPHI"])
     self.nsize=int(fitsMCMax3D[0].header["NSIZE"])
@@ -156,13 +249,15 @@ class Zone(object):
     self.chi=fitsMCMax3D[11].data    
     if len(fitsMCMax3D)>12:
       self.AVrad=fitsMCMax3D[12].data
+      
+      
+    if os.path.isfile(self.fname_abun):
+      self.species,self.abundances=read_abun_fits(self.fname_abun)
     
-#     print("INFO: Read particle sizes ...")
-#     t = time.process_time()
-#     self.psizes=self.read_particle_sizes(self.nsize)
-#     self.calc_amean()
-#     print("TIME: ",time.process_time() - t)
+    if psizes is not None:
+      self.calc_amean(psizes)
 
+    
     t = time.process_time()    
     print("INFO: Calculate vertical column densities ...")
     self.rhogVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
@@ -173,29 +268,6 @@ class Zone(object):
     
     fitsMCMax3D.close()
     
-  def read_particle_sizes(self,nsize):
-    
-    print("INFO: Read particles ...")
-    psizes=numpy.zeros(shape=(nsize))
-    # FIXME: fix fixed filenames
-    dirn="Particles"
-     
-    for i in range(nsize):
-      # file names can be different for some reason, so try to find it
-      # FIXME: this is not a very good solution
-      fname=dirn+"/particle0001_"+"{:04d}".format(i+1)+"_0001*.fits.gz"
-      fname=glob.glob(fname)[0]
-      
-      try:        
-        fitsf=fits.open(fname)
-      except FileNotFoundError:
-        fname="../"+fname
-        fitsf=fits.open(fname)
-        
-      #fitsf.info()
-      psizes[i]=float(fitsf[0].header["A1"])
-    
-    return psizes
     
   def _set_cartesian_coord(self):
  
@@ -210,12 +282,11 @@ class Zone(object):
     
     return
   
-  def calc_amean(self):
+  def calc_amean(self,psizes):
     """
     Calculate the meand dust size at each point in the disk 
     
     """
-    
     
     print("INFO: Calculate dust moments ...")
     self.amean=numpy.zeros(shape=(self.np,self.nt,self.nr))
@@ -225,8 +296,8 @@ class Zone(object):
     
     doit=(self.rhog >self.minrho)
     
-    psizes2=self.psizes[:]**2.0
-    psizes3=self.psizes[:]**3.0
+    psizes2=psizes[:]**2.0
+    psizes3=psizes[:]**3.0
     onethird=1.0/3.0
     
     for ip in range(self.np):
@@ -239,7 +310,7 @@ class Zone(object):
           
           nparts=self.comp[0,:,0,ip,it,ir]/(self.rhodparticle*psizes3[:])
           sum_nparts= numpy.sum(nparts)
-          mom1=numpy.sum(nparts*self.psizes)
+          mom1=numpy.sum(nparts*psizes)
           mom2=numpy.sum(nparts*psizes2)
           mom3=numpy.sum(nparts*psizes3)
 
@@ -318,7 +389,26 @@ class SED(object):
 
 
 def read_abun_fits(fname):
+  """
+  Reads a fits file the contains the chemical abundances. This file is is produced by the 
+  MCMax3D - ProDiMo interface. For more information contact Christian RAb.  
   
+
+  Parameters
+  ----------
+  fname : str 
+    the file nme of the corresponding fits 
+
+  Returns
+  -------
+  
+  species : array_like(str,ndim=1) :
+    a list of all the chemical species names. 
+    
+  abun : array_like(float,ndim=4)
+    Four dimensional array with the abundances of all chemical species. 
+  """
+
   # primary hdu with the abundances
   hdulist = fits.open(fname)
   # table hdu with the species names
@@ -335,9 +425,9 @@ def read_abun_fits(fname):
   return species,abun
 
 
-def read_MCSEDs(directory):  
+def read_MCSpec(directory):  
   """
-  Tries to read all MC Seds in the give directory and returns them as a list. 
+  Tries to read all Monte Carlo SEDs in the give directory and returns them as a list. 
 
   Parameters
   ----------
@@ -353,6 +443,8 @@ def read_MCSEDs(directory):
   if fseds is None: 
     return None
 
+  print("INFO: read MCSpecs ...")
+
   seds=list()  
   for fsed in fseds:
     data=numpy.loadtxt(fsed)
@@ -363,24 +455,90 @@ def read_MCSEDs(directory):
 
   return seds
 
+
+def read(modelDir=".",outDir=None,readParticles=False):
+  """
+  Trys to read all the possible output of MCMax3D and puts it into one data structure
+  (see :class:`mcmax3dpy.read.DataMCMax3D`)
+  """
+  
+  print("INFO: Try to read everything ...")
+  
+  data=DataMCMax3D(modelDir,outDir)
+
+  if readParticles:
+    t = time.process_time()
+    data.psizes=read_particle_sizes(modelDir+"/Particles")
+    print("TIME: ",time.process_time() - t)
+    
+  
+  data.zones=read_zones(data._dataDir,psizes=data.psizes)
+  data.MCseds=read_MCSpec(data._dataDir)
+  
+  return data
+  
+
+def read_particle_sizes(directory):
+  """
+  Reads the particle files. This is need to e.g. calculate the mand dust sizes etc. 
+  
+  FIXME: this routine can currently only deal with one particle type and one temperatur.
+  
+  
+  Returns:
+  -------
+  array_like(float,dim=1)
+    Returns a list with the different particle sizes.
+  
+  """
+  
+  print("INFO: Read particle sizes ...")
+
+  fnames=glob.glob(directory+"/particle0001_*_0001*.fits.gz")
+
+  if fnames is None or len(fnames)==0:
+    print("WARN: Could not read any particles in directory "+directory)
+    return None
+  
+  fnames.sort()
+   
+  psizes=list()
+  for fname in fnames:
+    fitsf=fits.open(fname)
+      
+    psizes.append(float(fitsf[0].header["A1"]))
+  
+  return numpy.array(psizes)
+  
+  
             
-def read_zones(directory):
+def read_zones(directory,psizes=None):
   """
   Tries to read all Zones fits files in the given directory and returns the 
   results in a list. 
-  """
- 
-  #do some stuff
   
+  Parameters
+  ----------
+  directory : str 
+    the directory to search for the Zone files. 
     
+  Returns
+  -------
+  array_like(:class:`mcmax3dpy.read.Zone`)
+    List with all Zone object. 
+  """
   
+  print("INFO: read_zones ...")
+  
+  #do some stuff
+  print(directory+"/Zone*.fits.gz")
   sortedZones=sorted(glob.glob(directory+"/Zone*.fits.gz"))
   print(sortedZones)
   
   zones=list()
   for zoneFile in sortedZones:
     zone=Zone()
-    zone.read(zoneFile)
+    zone.read(zoneFile,psizes=psizes)
     
     # also check for the abundances
     # move the whole stuff in a separate routine and pass with the zone as 
