@@ -9,9 +9,98 @@ from __future__ import unicode_literals
 
 
 import numpy
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import math
 from matplotlib import ticker, patches
+
+
+
+
+def _initfig(ax=None,**kwargs):
+    '''
+    Inits Figure and Axes object. 
+    
+    If an Axes object is passed, it is returned together with the Figure object.
+    
+    This is for a single plot (i.e. only one panel)
+    
+    Returns
+    -------
+    :class:`~matplotlib.figure.Figure`
+    :class:`~matplotlib.axes.Axes` 
+    '''
+
+    if ax is not None:
+      fig=ax.get_figure()
+
+    else:
+      fig, ax = plt.subplots(1, 1,figsize=_sfigs(**kwargs)) 
+
+    return fig,ax
+  
+  
+def _sfigs(**kwargs):
+  '''
+  Scale the figure size from matplotlibrc by the factors given in the 
+  array sfigs (in kwargs) the first element is for the width the second for
+  the heigth
+  '''            
+  if "sfigs" in kwargs:
+    fac=kwargs["sfigs"]
+    return scale_figs(fac)
+  else:
+    return scale_figs([1.0,1.0])
+  
+  
+def scale_figs(scale):
+  '''
+  Scale the figure size from matplotlibrc by the factors given in the 
+  array scale the first element is for the width the second for
+  the heigth.
+  '''            
+  figsize=mpl.rcParams['figure.figsize']
+  
+  return (figsize[0]*scale[0],figsize[1]*scale[1])
+
+def _dokwargs(ax,**kwargs):
+  '''
+  Handles the passed kwargs elements (assumes that defaults are already set)
+  TODO: make this a general function .... 
+  '''
+  if "ylim" in kwargs: 
+    ax.set_ylim(kwargs["ylim"])
+    
+  if "xlim" in kwargs: 
+    ax.set_xlim(kwargs["xlim"])
+            
+  if "xlog" in kwargs:
+    if kwargs["xlog"]: 
+      ax.semilogx()
+    else:
+      ax.set_xscale("linear")
+    
+  if "ylog" in kwargs:
+    if kwargs["ylog"]: 
+      ax.semilogy()
+    else:              
+      ax.set_yscale("linear")
+    
+  if "xlabel" in kwargs:
+    ax.set_xlabel(kwargs["xlabel"])  
+
+  if "ylabel" in kwargs:
+    ax.set_ylabel(kwargs["ylabel"])
+  
+#   if self.title != None and (not "notitle" in kwargs):
+#     if self.title.strip() != "":
+#       ax.set_title(self.title.strip())
+    
+  if "title" in kwargs:
+    if  kwargs["title"] != None and kwargs["title"].strip() != "":
+      ax.set_title(kwargs["title"].strip())
+    else:
+      ax.set_title("")  
 
 
 def plog(array):      
@@ -27,7 +116,7 @@ def plog(array):
 
 def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
                     vlim=[None,None],vlabel=None,clevels=None,patches=None,rlim=None,
-                    patchesAzimuthal=None,patchesVertical=None,species=None,plotGrid=False):
+                    patchesAzimuthal=None,patchesVertical=None,species=None,plotGrid=False,**kwargs):
   """
   Plots the xz (rtheta) and the xy (rphi) planes considering all zones.
    
@@ -35,7 +124,7 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
   
   TODO: Check if phi=0 is the same in all zones (relative to each other). 
   TODO: provide parameters for the cuts (e.g. not a phi=0).
-  TODO: Currently value is always plotted on a logscale 
+  TODO: Currently value is always plotted on a logscale
   
   Parameters
   ----------
@@ -225,3 +314,32 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     CB.set_label(vlabel)
 
   return fig
+
+
+def plot_sed(model,**kwargs):
+  """
+  Plots the SED of the model.
+  Currently the Monte Carlo SED is used. And simple the first one is taken.
+  
+  Parameters
+  ----------
+  model : :class:`mcmax3dpy.read.DataMCMax3D`
+  
+  """
+  
+  fig,ax=_initfig(**kwargs)
+  
+  sed=model.MCseds[0]
+  ax.plot(sed.wl,sed.fluxJy)
+  ax.set_xlabel(r"wavelength [$\mu m$]")
+  ax.set_ylabel(r"flux [Jy]")
+  
+  
+  ax.semilogx()
+  ax.semilogy()
+  
+  _dokwargs(ax,**kwargs)
+  
+  return fig
+  
+  
