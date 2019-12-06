@@ -9,6 +9,19 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
+
+import atexit
+from setuptools.command.install import install
+
+def _post_install():
+    import mcmax3dpy
+    mcmax3dpy.copy_style()
+
+class new_install(install):
+    def __init__(self, *args, **kwargs):
+        super(new_install, self).__init__(*args, **kwargs)
+        atexit.register(_post_install)
+
 # Get the long description from the relevant file
 with open(path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
     long_description = f.read()
@@ -61,6 +74,11 @@ setup(
     # simple. Or you can use find_packages().
     packages=find_packages(exclude=['testdata']),
     #packages=['prodimopy'],
+
+    cmdclass          = {'install': new_install},
+    package_data      = {'mcmax3dpy/stylelib':[
+        'mcmax3dpy/stylelib/mcmax3dpy.mplstyle',]},
+
 
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's

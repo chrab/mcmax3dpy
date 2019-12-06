@@ -384,7 +384,6 @@ class SED(object):
     self.wl=None
     self.nu=None
     self.fluxJy=None
-  
 
 
 def read_abun_fits(fname):
