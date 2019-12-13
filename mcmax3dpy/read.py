@@ -15,7 +15,6 @@ import os
 import math
 import time
 
-
 class DataMCMax3D(object):
   """
   Data container for the outputs of an MCMax3D model.
@@ -56,7 +55,12 @@ class DataMCMax3D(object):
     """    
     self.MCseds=None
     """ array_like(:class:`mcmax3dpy.read.SED`) :
-    The MonteCarl Spectral Energy Distribution(s) for the models (SED) 
+    The Monte Carlo Spectral Energy Distribution(s) for the models (SED) 
+    see :class:`mcmax3dpy.read.SED` for details.
+    """ 
+    self.RTseds=None
+    """ array_like(:class:`mcmax3dpy.read.SED`) :
+    The raytracing Spectral Energy Distribution(s) for the models (SED) 
     see :class:`mcmax3dpy.read.SED` for details.
     """ 
     self.psizes=None   
@@ -199,6 +203,13 @@ class Zone(object):
     # the vertical column densities for the chemical species
     # shape(np,nt,nr,nspecies)
     self.chem_cd=None
+    
+    self.sd=None
+    """ array_like(float,ndim=2) :
+    The surfacedensity read from the additional file. Contains the radius and the 
+    surfacedensity.
+    `UNIT:` , `DIMS:` (nr,2)    
+    """
   
   # TODO maybe make the read routine a method function (like in the prodimo scripts)
   def read(self,infile,psizes=None):
@@ -266,6 +277,16 @@ class Zone(object):
     print("TIME: ",time.process_time() - t)
     
     fitsMCMax3D.close()
+    
+    
+    # check for the surfacedensity
+    # FIXME: not very nice
+    sdfname=self.fname.replace(".fits.gz",".dat")
+    sdfname=sdfname.replace("Zone","surfacedens")
+    print("INFO: read "+sdfname)
+    self.sd=numpy.loadtxt(sdfname)
+    
+
     
     
   def _set_cartesian_coord(self):
@@ -382,8 +403,23 @@ class SED(object):
   """
   def __init__(self):
     self.wl=None
+    """ array_like(float,dim=1) :
+    The wavelenghts [micron]
+    """
     self.nu=None
+    
     self.fluxJy=None
+    """ array_like(float,dim=1) :
+    The flux of the whole domain [Jy]
+    """
+    self.fluxJyZones=None
+    """ array_like(float,dim=2) :
+    The fluxes for each individual zone. 
+    """
+    self.fluxJyStars=None
+    """ array_like(float,dim=2) :
+    The fluxes for each individual Star
+    """
 
 
 def read_abun_fits(fname):
@@ -454,6 +490,43 @@ def read_MCSpec(directory):
   return seds
 
 
+def read_RTSpec(directory,nzones=1):  
+  """
+  Tries to read all Ray Tracing SEDs in the give directory and returns them as a list. 
+
+  Parameters
+  ----------
+  directory : str 
+    the directory to search for the SEDs 
+
+  Returns
+  -------
+  array_like(:class:`mcmax3dpy.read.SED`)
+    a list of SEDs 
+  """
+  fseds=sorted(glob.glob(directory+"/RTSpec*.dat"))
+  if fseds is None: 
+    return None
+
+  print("INFO: read RTSpecs ...")
+
+  seds=list()  
+  for fsed in fseds:
+    data=numpy.loadtxt(fsed)
+    # case of only on wavelenght point, make ndim=2 array anyway
+    if data.ndim==1:
+      data=numpy.array([data])
+    print(data,data.shape,data.ndim)
+    sed=SED()
+    sed.wl=data[:,0]
+    sed.fluxJy=data[:,1]
+    sed.fluxJyZones=data[:,2:2+nzones]
+    sed.fluxJyStars=data[:,2+nzones:]
+    seds.append(sed)
+
+  return seds
+
+
 def read(modelDir=".",outDir=None,readParticles=False):
   """
   Trys to read all the possible output of MCMax3D and puts it into one data structure
@@ -472,6 +545,7 @@ def read(modelDir=".",outDir=None,readParticles=False):
   
   data.zones=read_zones(data._dataDir,psizes=data.psizes)
   data.MCseds=read_MCSpec(data._dataDir)
+  data.RTseds=read_RTSpec(data._dataDir,len(data.zones))
   
   return data
   

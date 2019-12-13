@@ -16,7 +16,6 @@ from matplotlib import ticker, patches
 
 
 
-
 def _initfig(ax=None,**kwargs):
     '''
     Inits Figure and Axes object. 
@@ -316,7 +315,25 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
   return fig
 
 
-def plot_sed(model,**kwargs):
+def plot_sd(zones,**kwargs):
+  """
+  Plots the surfacedensity of the Zones.
+  
+  """
+
+  fig,ax=_initfig(**kwargs)
+
+
+  for zone in zones:
+    ax.plot(zone.sd[:,0],zone.sd[:,1],color="darkgray")
+
+  _dokwargs(ax,**kwargs)
+  
+  return fig
+
+  
+
+def plot_sed(model,MC=True,RT=True,zones=True,stars=True,**kwargs):
   """
   Plots the SED of the model.
   Currently the Monte Carlo SED is used. And simple the first one is taken.
@@ -329,8 +346,31 @@ def plot_sed(model,**kwargs):
   
   fig,ax=_initfig(**kwargs)
   
-  sed=model.MCseds[0]
-  ax.plot(sed.wl,sed.fluxJy)
+  if model.MCseds is not None and MC==True:
+    sed=model.MCseds[0]
+    ax.plot(sed.wl,sed.fluxJy,label="MC")
+
+  if model.RTseds is not None and RT==True:
+
+    sed=model.RTseds[0]
+
+    marker=None
+    if len(sed.wl)==1: marker="+"
+
+    ax.plot(sed.wl,sed.fluxJy,label="RT",marker=marker)
+
+    nzones=len(model.zones)
+    if zones==True:
+      for i in range(len(sed.fluxJyZones[0,:])):
+        ax.plot(sed.wl,sed.fluxJyZones[:,i],label="RT Zone "+str(i),
+                linestyle="--",marker=marker)
+        
+    if stars==True:
+      for i in range(len(sed.fluxJyStars[0,:])):
+        ax.plot(sed.wl,sed.fluxJyStars[:,i],label="RT Star "+str(i),
+                linestyle=":",marker=marker)
+    
+    
   ax.set_xlabel(r"wavelength [$\mu m$]")
   ax.set_ylabel(r"flux [Jy]")
   
@@ -339,6 +379,8 @@ def plot_sed(model,**kwargs):
   ax.semilogy()
   
   _dokwargs(ax,**kwargs)
+  
+  ax.legend()
   
   return fig
   
