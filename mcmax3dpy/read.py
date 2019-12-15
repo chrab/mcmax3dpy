@@ -9,7 +9,7 @@ from __future__ import unicode_literals
 
 from astropy.io import fits
 import astropy.units as u
-import numpy
+import numpy as np
 import glob
 import os
 import math
@@ -270,9 +270,9 @@ class Zone(object):
     
     t = time.process_time()    
     print("INFO: Calculate vertical column densities ...")
-    self.rhogVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.rhogVer=np.zeros(shape=(self.np,self.nt,self.nr))
     self.integrate_vertical(self.rhog,self.rhogVer)
-    self.rhodVer=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.rhodVer=np.zeros(shape=(self.np,self.nt,self.nr))
     self.integrate_vertical(self.rhod,self.rhodVer)
     print("TIME: ",time.process_time() - t)
     
@@ -284,16 +284,16 @@ class Zone(object):
     sdfname=self.fname.replace(".fits.gz",".dat")
     sdfname=sdfname.replace("Zone","surfacedens")
     print("INFO: read "+sdfname)
-    self.sd=numpy.loadtxt(sdfname)
+    self.sd=np.loadtxt(sdfname)
     
 
     
     
   def _set_cartesian_coord(self):
  
-    self.x=self.r*numpy.sin(self.theta)*numpy.cos(self.phi)
-    self.y=self.r*numpy.sin(self.theta)*numpy.sin(self.phi)
-    self.z=self.r*numpy.cos(self.theta)
+    self.x=self.r*np.sin(self.theta)*np.cos(self.phi)
+    self.y=self.r*np.sin(self.theta)*np.sin(self.phi)
+    self.z=self.r*np.cos(self.theta)
     
     # also aplly the translation 
     self.x=self.x+self.x0
@@ -309,10 +309,10 @@ class Zone(object):
     """
     
     print("INFO: Calculate dust moments ...")
-    self.amean=numpy.zeros(shape=(self.np,self.nt,self.nr))
-    self.a1mom=numpy.zeros(shape=(self.np,self.nt,self.nr))
-    self.a2mom=numpy.zeros(shape=(self.np,self.nt,self.nr))
-    self.a3mom=numpy.zeros(shape=(self.np,self.nt,self.nr))
+    self.amean=np.zeros(shape=(self.np,self.nt,self.nr))
+    self.a1mom=np.zeros(shape=(self.np,self.nt,self.nr))
+    self.a2mom=np.zeros(shape=(self.np,self.nt,self.nr))
+    self.a3mom=np.zeros(shape=(self.np,self.nt,self.nr))
     
     doit=(self.rhog >self.minrho)
     
@@ -329,10 +329,10 @@ class Zone(object):
             continue
           
           nparts=self.comp[0,:,0,ip,it,ir]/(self.rhodparticle*psizes3[:])
-          sum_nparts= numpy.sum(nparts)
-          mom1=numpy.sum(nparts*psizes)
-          mom2=numpy.sum(nparts*psizes2)
-          mom3=numpy.sum(nparts*psizes3)
+          sum_nparts= np.sum(nparts)
+          mom1=np.sum(nparts*psizes)
+          mom2=np.sum(nparts*psizes2)
+          mom3=np.sum(nparts*psizes3)
 
           self.amean[ip,it,ir]=(mom3/sum_nparts)**(onethird) # this is the amean output from prodimo
           self.a1mom[ip,it,ir]=(mom1/sum_nparts)
@@ -358,8 +358,8 @@ class Zone(object):
     # FIXME: check what happends if nt is odd    
     imid = int(self.nt/2-1)  
       
-    thetagrid=numpy.abs(pih-self.theta[0,:,0])
-    tanthetagrid=numpy.tan(thetagrid)
+    thetagrid=np.abs(pih-self.theta[0,:,0])
+    tanthetagrid=np.tan(thetagrid)
     # over this indices the integration is done, where it is assumed
     # that the theta grid is symetrical
     thetaidx=range(0,imid+1)
@@ -376,7 +376,7 @@ class Zone(object):
       # now step to the next point    
       for it in thetaidx:
         r=math.sqrt(rmid**2.0+zgrid[it]**2.0)
-        irz=numpy.argmin(numpy.abs(r-self.r[0,it,:]))
+        irz=np.argmin(np.abs(r-self.r[0,it,:]))
         
         # do the integration
         if itprev is not None: 
@@ -481,7 +481,7 @@ def read_MCSpec(directory):
 
   seds=list()  
   for fsed in fseds:
-    data=numpy.loadtxt(fsed)
+    data=np.loadtxt(fsed)
     sed=SED()
     sed.wl=data[:,0]
     sed.fluxJy=data[:,1]
@@ -505,18 +505,17 @@ def read_RTSpec(directory,nzones=1):
     a list of SEDs 
   """
   fseds=sorted(glob.glob(directory+"/RTSpec*.dat"))
-  if fseds is None: 
+  if fseds is None or len(fseds)==0: 
     return None
 
   print("INFO: read RTSpecs ...")
 
   seds=list()  
   for fsed in fseds:
-    data=numpy.loadtxt(fsed)
+    data=np.loadtxt(fsed)
     # case of only on wavelenght point, make ndim=2 array anyway
     if data.ndim==1:
-      data=numpy.array([data])
-    print(data,data.shape,data.ndim)
+      data=np.array([data])
     sed=SED()
     sed.wl=data[:,0]
     sed.fluxJy=data[:,1]
@@ -580,7 +579,7 @@ def read_particle_sizes(directory):
       
     psizes.append(float(fitsf[0].header["A1"]))
   
-  return numpy.array(psizes)
+  return np.array(psizes)
   
   
             
@@ -621,8 +620,8 @@ def read_zones(directory,psizes=None):
       zone.species=species
       zone.abundances=abun
       
-      zone.chem_cd=numpy.zeros(shape=(zone.np,zone.nt,zone.nr,len(zone.species)))
-      nd=numpy.zeros(shape=(zone.np,zone.nt,zone.nr,len(zone.species)))
+      zone.chem_cd=np.zeros(shape=(zone.np,zone.nt,zone.nr,len(zone.species)))
+      nd=np.zeros(shape=(zone.np,zone.nt,zone.nr,len(zone.species)))
       # calculate the vertical column densities
       print("INFO: Calculate vertical column densities species ..")
 
