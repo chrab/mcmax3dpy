@@ -154,7 +154,7 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
   fig, axes = plt.subplots(1, 2,sharex=False,sharey=False)
   figsize = fig.get_size_inches() 
   figsize = figsize*0.9
-  figsize[0] = figsize[0] * 1.48
+  figsize[0] = figsize[0] * 1.58
   #figsize[1] =figsize[0]*0.61839012926
   fig.set_size_inches(figsize)
   
@@ -211,7 +211,7 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     #val=numpy.insert(val,0,[val[0,:]],axis=0)
     
     ax=axes[0]
-    CS = ax.contourf(x-x0, z-z0, val,levels=levels,extend="both",cmap="inferno",zorder=-20)    
+    CS = ax.contourf(x-x0, z-z0, val,levels=levels,extend="both",zorder=-20)    
     for c in CS.collections:
       c.set_edgecolor("face")         
     ax.set_rasterization_zorder(-19)
@@ -304,8 +304,8 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
  
     if plotGrid:
       ax.scatter(x-x0,y-y0,s=0.2,color="0.5")
-
-  plt.tight_layout()
+   
+  plt.tight_layout()   
    
   CB=fig.colorbar(CS3, ax=axes.ravel().tolist(),pad=0.005,ticks=ticks,
                   format="%3.1f")
@@ -333,7 +333,8 @@ def plot_sd(zones,**kwargs):
 
   
 
-def plot_sed(model,MC=True,RT=True,zones=True,stars=True,**kwargs):
+def plot_sed(model,MC=True,RT=True,full=True,zones=True,zonesIdx=None,
+             stars=True,starsIdx=None,**kwargs):
   """
   Plots the SED of the model.
   Currently the Monte Carlo SED is used. And simple the first one is taken.
@@ -341,33 +342,40 @@ def plot_sed(model,MC=True,RT=True,zones=True,stars=True,**kwargs):
   Parameters
   ----------
   model : :class:`mcmax3dpy.read.DataMCMax3D`
+    The MCMax3D model
+  
+  zonesIdx : array_like(int,ndim=1)
+    Indices of the zones to plot (starting from zero). 
+    
   
   """
   
   fig,ax=_initfig(**kwargs)
   
-  if model.MCseds is not None and MC==True:
+  if model.MCseds is not None and MC is True and full is True:
     sed=model.MCseds[0]
     ax.plot(sed.wl,sed.fluxJy,label="MC")
 
   if model.RTseds is not None and RT==True:
-
     sed=model.RTseds[0]
 
     marker=None
     if len(sed.wl)==1: marker="+"
 
-    ax.plot(sed.wl,sed.fluxJy,label="RT",marker=marker)
+    if full is True:
+      ax.plot(sed.wl,sed.fluxJy,label="RT",marker=marker)
 
     nzones=len(model.zones)
     if zones==True:
       for i in range(len(sed.fluxJyZones[0,:])):
-        ax.plot(sed.wl,sed.fluxJyZones[:,i],label="RT Zone "+str(i),
-                linestyle="--",marker=marker)
-        
+        if zonesIdx is None or i in zonesIdx:
+          ax.plot(sed.wl,sed.fluxJyZones[:,i],label="RT Zone "+str(i),
+                  linestyle="--",marker=marker)
+          
     if stars==True:
       for i in range(len(sed.fluxJyStars[0,:])):
-        ax.plot(sed.wl,sed.fluxJyStars[:,i],label="RT Star "+str(i),
+        if starsIdx is None or i in starsIdx:
+          ax.plot(sed.wl,sed.fluxJyStars[:,i],label="RT Star "+str(i),
                 linestyle=":",marker=marker)
     
     
