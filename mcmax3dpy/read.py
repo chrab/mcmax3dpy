@@ -208,7 +208,7 @@ class Zone(object):
     """ array_like(float,ndim=2) :
     The surfacedensity read from the additional file. Contains the radius and the 
     surfacedensity.
-    `UNIT:` , `DIMS:` (nr,2)    
+    `UNIT: g/cm2` , `DIMS:` (nr,2)    
     """
   
   # TODO maybe make the read routine a method function (like in the prodimo scripts)
