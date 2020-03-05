@@ -8,15 +8,17 @@ from __future__ import division
 from __future__ import unicode_literals
 
 
-import numpy
+import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import math
 from matplotlib import ticker, patches
+import mcmax3dpy.image as mimage
+import astropy.wcs as wcs
 
 
 
-def _initfig(ax=None,**kwargs):
+def _initfig(ax=None,projection=None,**kwargs):
     '''
     Inits Figure and Axes object. 
     
@@ -34,7 +36,11 @@ def _initfig(ax=None,**kwargs):
       fig=ax.get_figure()
 
     else:
-      fig, ax = plt.subplots(1, 1,figsize=_sfigs(**kwargs)) 
+      if projection is not None:
+        fig, ax = plt.subplots(1, 1,figsize=_sfigs(**kwargs),
+                               subplot_kw=dict(projection=projection))
+      else:  
+        fig, ax = plt.subplots(1, 1,figsize=_sfigs(**kwargs)) 
 
     return fig,ax
   
@@ -107,9 +113,9 @@ def plog(array):
   Just a utilty function to avoid error-messages when taking the log of an arry
   """
   # ignore divide by zero in log10
-  old_settings = numpy.seterr(divide='ignore') 
-  array = numpy.log10(array)
-  numpy.seterr(**old_settings)  # reset to default  
+  old_settings = np.seterr(divide='ignore') 
+  array = np.log10(array)
+  np.seterr(**old_settings)  # reset to default  
   return array
 
 
@@ -179,12 +185,12 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     vmax=vlim[1]
     
     if vmin is None:
-      vmin=numpy.log10(numpy.min(field))
+      vmin=np.log10(np.min(field))
     else:
       vmin=math.log10(vmin)
       
     if vmax is None:
-      vmax=numpy.log10(numpy.max(field))
+      vmax=np.log10(np.max(field))
     else:
       vmax=math.log10(vmax)
     
@@ -201,14 +207,14 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
   # get the coordinates
   # fix the coordinates for nicer plotting    
     x=zone.x[0,:,:]  
-    #x=numpy.append(x,[numpy.zeros(shape=(zone.nr))],axis=0)
-    #x=numpy.insert(x,0,[numpy.zeros(shape=(zone.nr))],axis=0)
+    #x=np.append(x,[np.zeros(shape=(zone.nr))],axis=0)
+    #x=np.insert(x,0,[np.zeros(shape=(zone.nr))],axis=0)
     z=zone.z[0,:,:]
-    #z=numpy.append(z,[z[zone.nt-1,:]],axis=0)
-    #z=numpy.insert(z,0,[z[0,:]],axis=0)
+    #z=np.append(z,[z[zone.nt-1,:]],axis=0)
+    #z=np.insert(z,0,[z[0,:]],axis=0)
     val=fieldlog[0,:,:]
-    #val=numpy.append(val,[val[zone.nt-1,:]],axis=0)
-    #val=numpy.insert(val,0,[val[0,:]],axis=0)
+    #val=np.append(val,[val[zone.nt-1,:]],axis=0)
+    #val=np.insert(val,0,[val[0,:]],axis=0)
     
     ax=axes[0]
     CS = ax.contourf(x-x0, z-z0, val,levels=levels,extend="both",zorder=-20)    
@@ -225,14 +231,14 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
   
     # plot also the other side,although is likely not exactly on the x-axis    
     x=zone.x[int(zone.np/2),:,:]
-    #x=numpy.append(x,[numpy.zeros(shape=(zone.nr))],axis=0)
-    #x=numpy.insert(x,0,[numpy.zeros(shape=(zone.nr))],axis=0)
+    #x=np.append(x,[np.zeros(shape=(zone.nr))],axis=0)
+    #x=np.insert(x,0,[np.zeros(shape=(zone.nr))],axis=0)
     z=zone.z[int(zone.np/2),:,:]
-    #z=numpy.append(z,[z[zone.nt-1,:]],axis=0)
-    #z=numpy.insert(z,0,[z[0,:]],axis=0)
+    #z=np.append(z,[z[zone.nt-1,:]],axis=0)
+    #z=np.insert(z,0,[z[0,:]],axis=0)
     val=fieldlog[int(zone.np/2),:,:]    
-    #val=numpy.append(val,[val[zone.nt-1,:]],axis=0)
-    #val=numpy.insert(val,0,[val[0,:]],axis=0)
+    #val=np.append(val,[val[zone.nt-1,:]],axis=0)
+    #val=np.insert(val,0,[val[0,:]],axis=0)
 
     CS2 = ax.contourf(x-x0, z-z0, val,levels=levels,extend="both",zorder=-20)       
       # This is the fix for the white lines between contour levels
@@ -270,11 +276,11 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     # FIXME: this is just a workaround to make it look nicer (to fill the circle)
     # so the last point is the same as the first point in phi 
     x=zone.x[:,int(zone.nt/2),:]
-    x=numpy.append(x,[x[0,:]],axis=0)
+    x=np.append(x,[x[0,:]],axis=0)
     y=zone.y[:,int(zone.nt/2),:]
-    y=numpy.append(y,[y[0,:]],axis=0)
+    y=np.append(y,[y[0,:]],axis=0)
     val=fieldlog[:,int(zone.nt/2),:]
-    val=numpy.append(val,[val[0,:]],axis=0)
+    val=np.append(val,[val[0,:]],axis=0)
     ax=axes[1]
     CS3 = ax.contourf(x-x0,y-y0, val,levels=levels,extend="both",zorder=-20)      
       # This is the fix for the white lines between contour levels
@@ -393,3 +399,66 @@ def plot_sed(model,MC=True,RT=True,full=True,zones=True,zonesIdx=None,
   return fig
   
   
+def plot_image(image,vlims=None,extend=None,projection="wcs",
+               xlabel="RA",ylabel="Dec",cblabel=None,**kwargs):
+  '''
+  
+  Plots a single image produce by MCMax3D.
+  
+  Parameters
+  ----------
+  
+  image : fits hdu
+    something that is similar to what comes aut from method:`image.prep_image` 
+  
+  coords : str
+    `wcs` use the wcs coordinate system for plotting
+    `wcsrelative` use the wcs coordinate system put relative to the center
+    `pixel` use the pixelcoordinate system
+    clas:`astropy.wcs.WCS` directly use this object
+  
+  '''
+  
+  if isinstance(projection,wcs.WCS):
+    proj=projection       
+  elif projection=="wcs":
+    proj=wcs.WCS(image.header)
+    xlabel="RA"
+    ylabel="Dec"
+  elif projection=="wcsrelative":
+    proj=mimage.linear_offset_coords(wcs.WCS(image.header))
+    xlabel="relative RA [arcsec]"
+    ylabel="relative Dec [arcsec]"
+  else: 
+    proj=None
+    xlabel="pixel"
+    ylabel="pixel"
+    
+  fig,ax=_initfig(projection=proj,**kwargs)
+  
+  values=image.data
+  if vlims is None:
+    vmax=np.log10(np.max(values)*0.8)
+    vmin=np.log10(np.max(values)/1.e6)
+    extend="both"
+  else:
+    vmin=lims[0]
+    vmax=lims[1]
+    
+  im = ax.imshow(np.log10(values),vmin=vmin,vmax=vmax,origin="lower",cmap="inferno")
+
+  ax.set_xlabel(xlabel)
+  ax.set_ylabel(ylabel)    
+
+  #ax.contour(np.log10(image[zoomto:npix-zoomto,zoomto:npix-zoomto].value),levels=[0],colors="white",linewidths=1.0)
+  cb=fig.colorbar(im,ax=ax,fraction=0.046, pad=0.01,extend=extend)
+  if cblabel is None:
+    cblabel=r"log flux [$mJy\,arcsec^{-2}$]"
+  cb.set_label(cblabel)
+  ax.set_facecolor('black')
+  for spine in ax.spines.values():
+    spine.set_color('white')
+
+  ax.tick_params(colors='white',labelcolor="black")
+
+  return fig  
