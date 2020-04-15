@@ -399,7 +399,7 @@ def plot_sed(model,MC=True,RT=True,full=True,zones=True,zonesIdx=None,
   return fig
   
   
-def plot_image(image,vlims=None,extend=None,projection="wcs",
+def plot_image(image,vlims=None,extend=None,projection="wcs",xlims=None,ylims=None,vlog=True,
                xlabel="RA",ylabel="Dec",cblabel=None,**kwargs):
   '''
   
@@ -429,6 +429,16 @@ def plot_image(image,vlims=None,extend=None,projection="wcs",
     proj=mimage.linear_offset_coords(wcs.WCS(image.header))
     xlabel="relative RA [arcsec]"
     ylabel="relative Dec [arcsec]"
+
+    if xlims is not None:     
+      xlims[0]=proj.wcs.crpix[0]+xlims[0]/np.abs(proj.wcs.cdelt[0])
+      xlims[1]=proj.wcs.crpix[0]+xlims[1]/np.abs(proj.wcs.cdelt[0])    
+
+    if ylims is not None:     
+      ylims[0]=proj.wcs.crpix[0]+ylims[0]/np.abs(proj.wcs.cdelt[0])
+      ylims[1]=proj.wcs.crpix[0]+ylims[1]/np.abs(proj.wcs.cdelt[0])    
+
+    
   else: 
     proj=None
     xlabel="pixel"
@@ -436,24 +446,52 @@ def plot_image(image,vlims=None,extend=None,projection="wcs",
     
   fig,ax=_initfig(projection=proj,**kwargs)
   
-  values=image.data
-  if vlims is None:
-    vmax=np.log10(np.max(values)*0.8)
-    vmin=np.log10(np.max(values)/1.e6)
-    extend="both"
+  if vlog:
+    values=np.log10(image.data)
   else:
-    vmin=lims[0]
-    vmax=lims[1]
+    values=image.data
     
-  im = ax.imshow(np.log10(values),vmin=vmin,vmax=vmax,origin="lower",cmap="inferno")
+  if vlims is None:
+    if vlog:
+      vmax=np.max(values)+np.log10(0.8)
+      vmin=np.max(values)-5.0
+      extend="both"
+    else:
+      vmax=np.nanmax(values)
+      vmin=np.nanmin(values)
+      extend="neither"
+      print(vmin,vmax)
+  else:
+    if vlog:
+      vmin=np.log10(vlims[0])
+      vmax=np.log10(vlims[1])
+      extend="both"
+    else:
+      vmin=vlims[0]
+      vmax=vlims[1]
+      extend="both"
+      
+  
+  im = ax.imshow(values,vmin=vmin,vmax=vmax,origin="lower",cmap="inferno")
+   
+  if xlims is not None:
+    ax.set_xlim(xlims)
 
+  if ylims is not None:
+    ax.set_ylim(ylims)
+
+ 
   ax.set_xlabel(xlabel)
   ax.set_ylabel(ylabel)    
 
   #ax.contour(np.log10(image[zoomto:npix-zoomto,zoomto:npix-zoomto].value),levels=[0],colors="white",linewidths=1.0)
   cb=fig.colorbar(im,ax=ax,fraction=0.046, pad=0.01,extend=extend)
   if cblabel is None:
-    cblabel=r"log flux [$mJy\,arcsec^{-2}$]"
+    if vlog:
+      cblabel=r"log flux [$mJy\,arcsec^{-2}$]"
+    else:
+      cblabel=r"flux [$mJy\,arcsec^{-2}$]"
+      
   cb.set_label(cblabel)
   ax.set_facecolor('black')
   for spine in ax.spines.values():
