@@ -11,7 +11,7 @@ import astropy.units as u
 from astropy.wcs.utils import proj_plane_pixel_scales
 
 
-def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfname=None):
+def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfname=None,casaunits=False):
   '''
   Utility funtion to prepare a fits file for e.g. plotting.
   
@@ -81,15 +81,22 @@ def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfna
   header = w.to_header()
 
   header.append(("BTYPE","Intensity"))
-  header.append(("BUNIT","mJy/arcsec**2"))
+  
+  if casaunits:
+    header.append(("BUNIT","JY/PIXEL"))
+  else:
+    header.append(("BUNIT","mJy/arcsec**2"))
 
   # header is an astropy.io.fits.Header object.  We can use it to create a new
   # PrimaryHDU and write it to a file.
   hdu = fits.PrimaryHDU(header=header)
-  hdu.data=image.data[0,:,:]    
+  if casaunits:
+    hdu.data=image.data[0,:,:]/1000.0*pixelscale.value**2      
+  else:
+    hdu.data=image.data[0,:,:]    
   
   if outfname is not None:
-    hdu.writeto(outfilename)
+    hdu.writeto(outfname)
 
   return hdu
 
@@ -129,7 +136,7 @@ def linear_offset_coords(wcsabs, center=None):
   new_wcs.wcs.crval = 0., 0.
   # FIXME: assumbes that the units are in degree
   scale=proj_plane_pixel_scales(wcsabs)*3600.
-  #scale[0]=scale[0]*-1.0 # otherwise it is the wrong direction, that does not change the orientation of the image just the labels
+  scale[0]=scale[0]*-1.0 # otherwise it is the wrong direction, that does not change the orientation of the image just the labels
   new_wcs.wcs.cdelt = scale
   new_wcs.wcs.ctype = 'XOFFSET', 'YOFFSET'
   new_wcs.wcs.cunit = 'arcsec', 'arcsec'
