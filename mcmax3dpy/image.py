@@ -11,6 +11,29 @@ import astropy.units as u
 from astropy.wcs.utils import proj_plane_pixel_scales
 
 
+
+def combine_Polarizations(Q,U,phi0):
+  '''
+  Routine to calculate Q_phi and U_phi. 
+  
+  See for exampel Schmid+ 2006, Section 5 
+  https://ui.adsabs.harvard.edu/abs/2006A%26A...452..657S/abstract
+  '''
+  
+  Qphi= np.zeros(np.shape(Q))
+  Uphi= np.zeros(np.shape(Q))
+  x0= np.shape(Q)[1]/2#-0.5
+  y0= np.shape(Q)[0]/2#-0.5
+  phi0=(phi0*u.deg).to(u.rad).value
+  for j in range(np.shape(Q)[0]): # over rows
+    for i in range(np.shape(Q)[1]): # over columns
+      phi= np.arctan2((float(i)-x0),(float(j)-y0))+phi0
+      Qphi[i,j]= Q[i,j]*np.cos(2*phi)+U[i,j]*np.sin(2*phi)
+      Uphi[i,j]= -Q[i,j]*np.sin(2*phi)+U[i,j]*np.cos(2*phi)
+  
+  return Qphi, Uphi
+
+
 def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfname=None,casaunits=False):
   '''
   Utility funtion to prepare a fits file for e.g. plotting.
@@ -134,8 +157,11 @@ def linear_offset_coords(wcsabs, center=None):
   if center is None:
     new_wcs.wcs.crpix = wcsabs.wcs.crpix[0]+1, wcsabs.wcs.crpix[0]+1
   new_wcs.wcs.crval = 0., 0.
-  # FIXME: assumbes that the units are in degree
+  # FIXME: assumes that the units are in degree
   scale=proj_plane_pixel_scales(wcsabs)*3600.
+  # TODO: verify this somehow
+  # I need to have the relative RA coordinates correct, I checked the absolute coordinats are projected correctly. 
+  # This minus is also set in prep_image . I guess this has just to be consistent.
   scale[0]=scale[0]*-1.0 # otherwise it is the wrong direction, that does not change the orientation of the image just the labels
   new_wcs.wcs.cdelt = scale
   new_wcs.wcs.ctype = 'XOFFSET', 'YOFFSET'
