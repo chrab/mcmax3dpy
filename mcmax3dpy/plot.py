@@ -616,7 +616,7 @@ def plot_image(image,field="I",vlims=None,extend=None,projection="wcs",xlims=Non
       values=image.data
     elif naxis == 3:   
       index=fields.index(field)
-      print("Plotting: "+fields[index])
+      #print("Plotting: "+fields[index])
       
       if index>3:
         Qphi,Uphi=mimage.combine_Polarizations(image.data[1],image.data[2],0)
@@ -640,7 +640,8 @@ def plot_image(image,field="I",vlims=None,extend=None,projection="wcs",xlims=Non
       values=ndimage.rotate(values,-(90.0+pa),reshape=False,order=1)
     
     if vlog:
-      values=np.log10(values)
+      with np.errstate(divide='ignore',invalid='ignore'):
+        values=np.log10(values)
       
     if vlims is None:
       if vlog:
@@ -653,8 +654,9 @@ def plot_image(image,field="I",vlims=None,extend=None,projection="wcs",xlims=Non
         extend="neither"
     else:
       if vlog:
-        vmin=np.log10(vlims[0])
-        vmax=np.log10(vlims[1])
+        with np.errstate(divide='ignore'):       
+          vmin=np.log10(vlims[0])
+          vmax=np.log10(vlims[1])
         extend="both"
       else:
         vmin=vlims[0]
