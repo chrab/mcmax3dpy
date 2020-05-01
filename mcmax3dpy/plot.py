@@ -13,9 +13,12 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import math
 from matplotlib import ticker, patches
+import matplotlib.colors as matcolors
 import mcmax3dpy.image as mimage
 import astropy.wcs as wcs
+from prodimopy.plot import scale_figs
 
+from scipy import ndimage
 
 
 def _initfig(ax=None,projection=None,**kwargs):
@@ -320,6 +323,135 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
 
   return fig
 
+def plot_midplane_zones(zones,fieldname,centerZoneIdx=None,
+                    vlim=[None,None],vlabel=None,clevels=None,patches=None,rlim=None,
+                    patchesAzimuthal=None,species=None,plotGrid=False,**kwargs):
+  """
+  Plots the the xy (rphi) planes considering all zones.
+     
+  TODO: Currently value is always plotted on a logscale
+  
+  Parameters
+  ----------
+  zones : array_like(ndim=1)
+    A list of the zones that should be plotted.
+  
+  fieldname : string
+    The data (3D structure) the should be printed (e.g. "temp", "chi", "rhod"). For details see 
+    :class:`mcmax3dpy.read.Zone`
+        
+  centerZoneIdx : int
+    Center the figure to the center of the zone with centerZoneIdx. DEFAULT: `None`
+  
+  vlim : array_like(ndim=1)
+    The range `vlim=[vmin,vmax]` for the values (also used for the colorbar). DEFAULT: `[None,None]` 
+    
+  rlim : float
+    The maximum "radius" around the center that should be shown. However, the plot is of course squared. 
+    But this is usefull to zoom in on the center.
+
+  """
+  
+  print("plot_cuts_zones: ",fieldname)
+  #ccolors=["black","blue","red","0.8"]
+  ccolors=["0.7","0.6","0.5","0.4"]  
+  ccolors=["0.4","0.4","0.4"]
+  
+  fig, ax = plt.subplots(1, 1)
+  figsize = fig.get_size_inches() 
+  #figsize = figsize*0.9
+  #figsize[0] = figsize[0] * 1.58
+  #figsize[1] =figsize[0]*0.61839012926
+  fig.set_size_inches(figsize)
+  
+  
+  # determine the relative center
+  x0=y0=z0=0
+  if centerZoneIdx is not None:
+    x0=zones[centerZoneIdx].x0
+    y0=zones[centerZoneIdx].y0
+    z0=zones[centerZoneIdx].z0  
+      
+  for zone in zones:
+    
+    field=getattr(zone, fieldname)    
+    if field is None: continue
+    if species is not None:
+      field=field[:,:,:,zone.species.index(species)]
+    
+    fieldlog=plog(field)
+  
+    vmin=vlim[0]
+    vmax=vlim[1]
+    
+    if vmin is None:
+      vmin=np.log10(np.min(field))
+    else:
+      vmin=math.log10(vmin)
+      
+    if vmax is None:
+      vmax=np.log10(np.max(field))
+    else:
+      vmax=math.log10(vmax)
+    
+#    phi1=int(zone.np/4)  
+#    phi2=int(zone.np/4*3)  
+
+    levels = ticker.MaxNLocator(nbins=39).tick_values(vmax, vmin)    
+    ticks = ticker.MaxNLocator(nbins=6, prune="both").tick_values(vmin, vmax)
+  
+    """
+    Midplane cut
+    """  
+    # plot through the midplane (or close through the midplane
+    # FIXME: this is just a workaround to make it look nicer (to fill the circle)
+    # so the last point is the same as the first point in phi 
+    x=zone.x[:,int(zone.nt/2),:]
+    x=np.append(x,[x[0,:]],axis=0)
+    y=zone.y[:,int(zone.nt/2),:]
+    y=np.append(y,[y[0,:]],axis=0)
+    # take an average, because it is not exaclty at zero. 
+    # FIXME: check if I really have used the correc index
+    val=(fieldlog[:,int(zone.nt/2),:]+fieldlog[:,int(zone.nt/2+1),:])/2.0
+    val=np.append(val,[val[0,:]],axis=0)
+    CS3 = ax.contourf(x-x0,y-y0, val,levels=levels,extend="both",zorder=-20)      
+      # This is the fix for the white lines between contour levels
+    for c in CS3.collections:
+      c.set_edgecolor("face")
+    ax.set_rasterization_zorder(-19)        
+      
+    if clevels is not None:
+      ax.contour(CS3, levels=clevels, colors=ccolors, linestyles="-",linewidths=0.5,zorder=0)
+      
+    ax.set_aspect("equal")
+    ax.set_xlabel("x [au]",labelpad=0)
+    ax.set_ylabel("y [au]",labelpad=0)
+    
+    if patches is not None:
+      for patch in patches:
+        ax.add_patch(copy.copy(patch))
+
+    if patchesAzimuthal is not None:
+      for patch in patchesAzimuthal:
+        ax.add_patch(copy.copy(patch))
+
+  
+    if rlim is not None:
+      ax.set_xlim([-rlim,rlim])
+      ax.set_ylim([-rlim,rlim])    
+ 
+    if plotGrid:
+      ax.scatter(x-x0,y-y0,s=0.2,color="0.5")
+   
+  plt.tight_layout()   
+   
+  CB=fig.colorbar(CS3, ax=ax,pad=0.005,ticks=ticks,
+                  format="%3.1f")
+  if vlabel is not None:
+    CB.set_label(vlabel)
+
+  return fig
+
 
 def plot_sd(zones,**kwargs):
   """
@@ -339,11 +471,10 @@ def plot_sd(zones,**kwargs):
 
   
 
-def plot_sed(model,MC=True,RT=True,full=True,zones=True,zonesIdx=None,
+def plot_sed(model,MC=True,RT=True,RTIdx=0,full=True,zones=True,zonesIdx=None,
              stars=True,starsIdx=None,**kwargs):
   """
   Plots the SED of the model.
-  Currently the Monte Carlo SED is used. And simple the first one is taken.
   
   Parameters
   ----------
@@ -353,6 +484,9 @@ def plot_sed(model,MC=True,RT=True,full=True,zones=True,zonesIdx=None,
   zonesIdx : array_like(int,ndim=1)
     Indices of the zones to plot (starting from zero). 
     
+  RTIdx : int
+    which RT spectrum should be plotted (useful if there are more than one.
+    Default: 0
   
   """
   
@@ -363,7 +497,7 @@ def plot_sed(model,MC=True,RT=True,full=True,zones=True,zonesIdx=None,
     ax.plot(sed.wl,sed.fluxJy,label="MC")
 
   if model.RTseds is not None and RT==True:
-    sed=model.RTseds[0]
+    sed=model.RTseds[RTIdx]
 
     marker=None
     if len(sed.wl)==1: marker="+"
@@ -399,8 +533,9 @@ def plot_sed(model,MC=True,RT=True,full=True,zones=True,zonesIdx=None,
   return fig
   
   
-def plot_image(image,vlims=None,extend=None,projection="wcs",xlims=None,ylims=None,vlog=True,
-               xlabel="RA",ylabel="Dec",cblabel=None,**kwargs):
+def plot_image(image,field="I",vlims=None,extend=None,projection="wcs",xlims=None,ylims=None,vlog=True,
+               xlabel="RA",ylabel="Dec",cblabel=None,pa=None,powerNormGamma=None,
+               showGrid=False,**kwargs):
   '''
   
   Plots a single image produce by MCMax3D.
@@ -416,19 +551,29 @@ def plot_image(image,vlims=None,extend=None,projection="wcs",xlims=None,ylims=No
     `wcsrelative` use the wcs coordinate system put relative to the center
     `pixel` use the pixelcoordinate system
     clas:`astropy.wcs.WCS` directly use this object
+    
+  field : str
+    can be either I, Q, U or PI, Qphi,Uphi . Default is I
+    If field == ALL a 3 times 2 plot grid is shown, 
+
   
   '''
   
+  labelfontsize=None
   if isinstance(projection,wcs.WCS):
     proj=projection       
   elif projection=="wcs":
-    proj=wcs.WCS(image.header)
+    # naxis=2 beause we deal only with RA and Dec ... do not care about the other axis
+    proj=wcs.WCS(image.header,naxis=2)
     xlabel="RA"
     ylabel="Dec"
+    # FIXME: is not very flexible
+    labelfontsize=6
   elif projection=="wcsrelative":
-    proj=mimage.linear_offset_coords(wcs.WCS(image.header))
-    xlabel="relative RA [arcsec]"
-    ylabel="relative Dec [arcsec]"
+    # naxis=2 beause we deal only with RA and Dec ... do not care about the other axis
+    proj=mimage.linear_offset_coords(wcs.WCS(image.header,naxis=2))
+    xlabel="rel. RA [arcsec]"
+    ylabel="rel. Dec [arcsec]"
 
     if xlims is not None:     
       xlims[0]=proj.wcs.crpix[0]+xlims[0]/np.abs(proj.wcs.cdelt[0])
@@ -444,59 +589,120 @@ def plot_image(image,vlims=None,extend=None,projection="wcs",xlims=None,ylims=No
     xlabel="pixel"
     ylabel="pixel"
     
-  fig,ax=_initfig(projection=proj,**kwargs)
-  
-  if vlog:
-    values=np.log10(image.data)
-  else:
-    values=image.data
+  fields=["I","Q","U","PI","Qphi","Uphi"]    
     
-  if vlims is None:
-    if vlog:
-      vmax=np.max(values)+np.log10(0.8)
-      vmin=np.max(values)-5.0
-      extend="both"
-    else:
-      vmax=np.nanmax(values)
-      vmin=np.nanmin(values)
-      extend="neither"
-      print(vmin,vmax)
-  else:
-    if vlog:
-      vmin=np.log10(vlims[0])
-      vmax=np.log10(vlims[1])
-      extend="both"
-    else:
-      vmin=vlims[0]
-      vmax=vlims[1]
-      extend="both"
-      
+  if field=="ALL":
+    subplot_kw=None
+    if projection is not None:
+      subplot_kw=dict(projection=proj)
   
-  im = ax.imshow(values,vmin=vmin,vmax=vmax,origin="lower",cmap="inferno")
-   
-  if xlims is not None:
-    ax.set_xlim(xlims)
-
-  if ylims is not None:
-    ax.set_ylim(ylims)
-
+    fig, axes = plt.subplots(2, 3,figsize=scale_figs((2.7,2.1)),subplot_kw=subplot_kw) 
+    
+    # flatten the list
+    axes = [item for sublist in axes for item in sublist]
  
-  ax.set_xlabel(xlabel)
-  ax.set_ylabel(ylabel)    
+    fieldsloop=fields
+    single=False
+  else:
+    fig,ax=_initfig(projection=proj,**kwargs)
+    axes=[ax]
+    fieldsloop=[field]
+    single=True
+  
+  naxis=image.header["NAXIS"]
 
-  #ax.contour(np.log10(image[zoomto:npix-zoomto,zoomto:npix-zoomto].value),levels=[0],colors="white",linewidths=1.0)
-  cb=fig.colorbar(im,ax=ax,fraction=0.046, pad=0.01,extend=extend)
-  if cblabel is None:
-    if vlog:
-      cblabel=r"log flux [$mJy\,arcsec^{-2}$]"
-    else:
-      cblabel=r"flux [$mJy\,arcsec^{-2}$]"
+  for field,ax in zip(fieldsloop,axes):
+    if naxis==2:
+      values=image.data
+    elif naxis == 3:   
+      index=fields.index(field)
+      print("Plotting: "+fields[index])
       
-  cb.set_label(cblabel)
-  ax.set_facecolor('black')
-  for spine in ax.spines.values():
-    spine.set_color('white')
-
-  ax.tick_params(colors='white',labelcolor="black")
+      if index>3:
+        Qphi,Uphi=mimage.combine_Polarizations(image.data[1],image.data[2],0)
+        if field == "Qphi":
+          values=Qphi
+        elif field == "Uphi":
+          values=Uphi
+        else:
+          print("Don not understand field: ",field)
+      else:
+        values=image.data[index]
+    
+    else:
+      print("ERROR: Cannot deal with this image NAXIS>3") 
+ 
+ 
+    if pa is not None: 
+      # print("Rotate the image by: ",pa)
+      # they way how the inclination in Images.out is defined requries to rotate the image by -90 (counterclockwise)
+      # and then bye the PA also counterclockwise
+      values=ndimage.rotate(values,-(90.0+pa),reshape=False,order=1)
+    
+    if vlog:
+      values=np.log10(values)
+      
+    if vlims is None:
+      if vlog:
+        vmax=np.max(values)+np.log10(0.8)
+        vmin=np.max(values)-5.0
+        extend="both"
+      else:
+        vmax=np.nanmax(values)
+        vmin=np.nanmin(values)
+        extend="neither"
+    else:
+      if vlog:
+        vmin=np.log10(vlims[0])
+        vmax=np.log10(vlims[1])
+        extend="both"
+      else:
+        vmin=vlims[0]
+        vmax=vlims[1]
+        extend="both"
+        
+    if powerNormGamma is not None:
+       norm=matcolors.PowerNorm(gamma=powerNormGamma)
+    else:
+      norm=None
+    
+    im = ax.imshow(values,vmin=vmin,vmax=vmax,origin="lower",cmap="inferno",norm=norm)
+     
+    if xlims is not None:
+      ax.set_xlim(xlims)
+  
+    if ylims is not None:
+      ax.set_ylim(ylims)
+  
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)   
+  
+    # FIXME: also not very flexible, but it is also easy enough to do outside of the routine  
+    if showGrid:
+      ax.grid(color='white', ls='dashed',lw=0.2)  
+    
+    if labelfontsize is not None:
+      ax.tick_params(axis='both', which='major', labelsize=labelfontsize) 
+  
+    #ax.contour(np.log10(image[zoomto:npix-zoomto,zoomto:npix-zoomto].value),levels=[0],colors="white",linewidths=1.0)
+    cb=fig.colorbar(im,ax=ax,fraction=0.046, pad=0.01,extend=extend)
+    if cblabel is None:
+      if vlog:
+        cblabel=r"log flux [$mJy\,arcsec^{-2}$]"
+      else:
+        cblabel=r"flux [$mJy\,arcsec^{-2}$]"
+        
+    cb.set_label(cblabel)
+    ax.set_facecolor('black')
+    for spine in ax.spines.values():
+      spine.set_color('white')
+  
+    ax.tick_params(colors='white',labelcolor="black")
+    
+    if not single:
+      # print the velocities relative to the systemic velocities
+      props = dict(boxstyle='round', facecolor='white', edgecolor="none")
+      ax.text(0.05, 0.95, field,transform=ax.transAxes, fontsize=6,fontweight="bold",
+          verticalalignment='top', horizontalalignment="left", bbox=props)
 
   return fig  
