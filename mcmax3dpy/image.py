@@ -61,23 +61,24 @@ def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfna
     
   outfname : str
     if given the create fits is writen to a file with name given by `outfname`
-
+    
   Returns
   -------
     hdu : an `HDU` object class:`astropy.io.fits.PrimaryHDU`
       or None if the fits file should be written to a file
   
   '''
+  print("prep_image: "+fname)
   image=fits.open(fname)[0]  
   # first define the pixel scale
   npix=image.header["NAXIS1"]
   fov=fov*u.arcsec # arcsec
   pixelscale=(fov/npix)
-  print(pixelscale)
+  print("Pixelscale=",pixelscale)
   
   # assume that the center is really in the center
   centerpix=(npix-1)/2
-  print(centerpix)
+  print("centerpix=",centerpix)
 
   if objectname is not None:
     coord=SkyCoord.from_name(objectname)
@@ -89,7 +90,9 @@ def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfna
   # Set up an "Airy's zenithal" projection
   # Vector properties may be set with Python lists, or Numpy arrays
   w.wcs.crpix = [centerpix, centerpix]
-  w.wcs.cdelt = np.array([pixelscale.to(u.degree).value, pixelscale.to(u.degree).value])
+  # TODO: check if the minus is a general property or can depend on the actually object or image.
+  # here I just used the example as given in the astropy documentaion 
+  w.wcs.cdelt = np.array([-pixelscale.to(u.degree).value, pixelscale.to(u.degree).value])
   w.wcs.crval = [coord.ra.degree, coord.dec.degree]
   w.wcs.ctype = ["RA---SIN", "DEC--SIN"]
 
@@ -109,14 +112,24 @@ def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfna
     header.append(("BUNIT","JY/PIXEL"))
   else:
     header.append(("BUNIT","mJy/arcsec**2"))
+  
+  print(" ")
+  #print(repr(header))
 
+#   if pa > 0.0: 
+#     for i in range(3):
+#       print(i,image.data.shape)
+#       image.data[i,:,:]=ndimage.rotate(image.data[i,:,:],pa,reshape=False)
+  
   # header is an astropy.io.fits.Header object.  We can use it to create a new
   # PrimaryHDU and write it to a file.
   hdu = fits.PrimaryHDU(header=header)
   if casaunits:
-    hdu.data=image.data[0,:,:]/1000.0*pixelscale.value**2      
+    hdu.data=image.data[:,:,:]/1000.0*pixelscale.value**2      
   else:
-    hdu.data=image.data[0,:,:]    
+    hdu.data=image.data[:,:,:]    
+    
+    
   
   if outfname is not None:
     hdu.writeto(outfname)
