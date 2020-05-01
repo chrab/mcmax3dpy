@@ -74,11 +74,10 @@ def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfna
   npix=image.header["NAXIS1"]
   fov=fov*u.arcsec # arcsec
   pixelscale=(fov/npix)
-  print("Pixelscale=",pixelscale)
   
   # assume that the center is really in the center
   centerpix=(npix-1)/2
-  print("centerpix=",centerpix)
+  print("centerpix=",centerpix," pixelscale=",pixelscale)
 
   if objectname is not None:
     coord=SkyCoord.from_name(objectname)
@@ -128,8 +127,6 @@ def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfna
     hdu.data=image.data[:,:,:]/1000.0*pixelscale.value**2      
   else:
     hdu.data=image.data[:,:,:]    
-    
-    
   
   if outfname is not None:
     hdu.writeto(outfname)
