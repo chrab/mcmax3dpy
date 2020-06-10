@@ -36,9 +36,9 @@ def combine_Polarizations(Q,U,phi0):
 
 def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfname=None,casaunits=False):
   '''
-  Utility funtion to prepare a fits file for e.g. plotting.
+  Utility function to prepare a MCMax3D image fits file for e.g. plotting or for the use within CASA.
   
-  Functionoality 
+  Functionality 
   
   - adds a proper wcs coordinate system
   - adds the units for the fits file
@@ -57,15 +57,17 @@ def prep_image(fname,fov,objectname=None,coordinates="00 42 30 +41 12 00",outfna
     using :class:`astropy.coordinates.SkyCoord`
     
   coordinates : str
-    corrdinsates as string an format :class:`astropy.coordinates.SkyCoord` understands
+    corrdinsates as string in a format :class:`astropy.coordinates.SkyCoord` understands
     
   outfname : str
-    if given the create fits is writen to a file with name given by `outfname`
+    if given the created fits file is written to a file with name given by `outfname`
+    
+  casaunits : boolean
+    provide the fits file in units of JY/PIXEL (I think that is rather obsolete)
     
   Returns
   -------
     hdu : an `HDU` object class:`astropy.io.fits.PrimaryHDU`
-      or None if the fits file should be written to a file
   
   '''
   print("prep_image: "+fname)
