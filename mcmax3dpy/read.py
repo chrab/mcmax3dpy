@@ -217,7 +217,7 @@ class Zone(object):
     print("INFO: Read fits input ...")
     self.fname=infile
     
-    self.fname_abun=self.fname.replace(".fits.gz","_abun.fits")
+    self.fname_abun=self.fname.replace(".fits.gz","_abun.fits.gz")
     
     fitsMCMax3D=fits.open(infile)
     fitsMCMax3D.info()
