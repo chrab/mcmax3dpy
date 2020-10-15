@@ -602,8 +602,9 @@ def read_zones(directory,psizes=None):
   print("INFO: read_zones ...")
   
   #do some stuff
-  print(directory+"/Zone*.fits.gz")
-  sortedZones=sorted(glob.glob(directory+"/Zone*.fits.gz"))
+  #really only want the Zone file
+  print(directory+"/Zone????.fits.gz")
+  sortedZones=sorted(glob.glob(directory+"/Zone????.fits.gz"))
   print(sortedZones)
   
   zones=list()
