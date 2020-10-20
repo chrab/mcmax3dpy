@@ -16,7 +16,8 @@ from matplotlib import ticker, patches
 import matplotlib.colors as matcolors
 import mcmax3dpy.image as mimage
 import astropy.wcs as wcs
-from prodimopy.plot import scale_figs
+import astropy.units as u
+import copy
 
 from scipy import ndimage
 
@@ -123,7 +124,7 @@ def plog(array):
 
 
 def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
-                    vlim=[None,None],vlabel=None,clevels=None,patches=None,rlim=None,
+                    vlim=[None,None],vlabel=None,clevels=None,patches=None,rlim=None,ip=0,
                     patchesAzimuthal=None,patchesVertical=None,species=None,plotGrid=False,**kwargs):
   """
   Plots the xz (rtheta) and the xy (rphi) planes considering all zones.
@@ -212,10 +213,10 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     x=zone.x[0,:,:]  
     #x=np.append(x,[np.zeros(shape=(zone.nr))],axis=0)
     #x=np.insert(x,0,[np.zeros(shape=(zone.nr))],axis=0)
-    z=zone.z[0,:,:]
+    z=zone.z[ip,:,:]
     #z=np.append(z,[z[zone.nt-1,:]],axis=0)
     #z=np.insert(z,0,[z[0,:]],axis=0)
-    val=fieldlog[0,:,:]
+    val=fieldlog[ip,:,:]
     #val=np.append(val,[val[zone.nt-1,:]],axis=0)
     #val=np.insert(val,0,[val[0,:]],axis=0)
     
@@ -236,10 +237,10 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     x=zone.x[int(zone.np/2),:,:]
     #x=np.append(x,[np.zeros(shape=(zone.nr))],axis=0)
     #x=np.insert(x,0,[np.zeros(shape=(zone.nr))],axis=0)
-    z=zone.z[int(zone.np/2),:,:]
+    z=zone.z[int(zone.np/2)+ip,:,:]
     #z=np.append(z,[z[zone.nt-1,:]],axis=0)
     #z=np.insert(z,0,[z[0,:]],axis=0)
-    val=fieldlog[int(zone.np/2),:,:]    
+    val=fieldlog[int(zone.np/2)+ip,:,:]    
     #val=np.append(val,[val[zone.nt-1,:]],axis=0)
     #val=np.insert(val,0,[val[0,:]],axis=0)
 
@@ -352,7 +353,7 @@ def plot_midplane_zones(zones,fieldname,centerZoneIdx=None,
 
   """
   
-  print("plot_cuts_zones: ",fieldname)
+  print("plot_midplane_zones: ",fieldname)
   #ccolors=["black","blue","red","0.8"]
   ccolors=["0.7","0.6","0.5","0.4"]  
   ccolors=["0.4","0.4","0.4"]
@@ -467,6 +468,75 @@ def plot_sd(zones,**kwargs):
 
   _dokwargs(ax,**kwargs)
   
+  return fig
+
+def plot_radial_zone(zone,field,ylabel,ip=0,ylim=[None,None]):
+  '''
+  Plot a quantity in the midplane as function of radius for a single zone. 
+  
+  Parameters
+  ----------
+
+  ip : array_like(int), or int
+    index of phi coordinate to plot. if array_like the radial plot is done 
+    for all given ips.
+  
+  
+  '''
+
+  fig, ax = plt.subplots(1, 1)
+    
+  
+  if type(ip) in [list,tuple]:
+    ips=ip
+  else:
+    ips=[ip]
+  
+  
+  #print(int(zone.nt/2-1),zone.z[ip,int(zone.nt/2-1),:])
+  #print(int(zone.nt/2),zone.z[ip,int(zone.nt/2),:])
+  #print(int(zone.nt/2+1),zone.z[ip,int(zone.nt/2+1),:])      
+
+#   print(int(zone.np/2),zone.y[int(zone.np/2),int(zone.nt/2),:])
+#   print(0,zone.y[0,int(zone.nt/2),:])
+#  
+#   print(int(zone.np/2+1),zone.y[int(zone.np/2+1),int(zone.nt/2),:])
+#   print(1,zone.y[1,int(zone.nt/2),:])
+# 
+#   print(int(zone.np/2-1),zone.y[int(zone.np/2-1),int(zone.nt/2),:])
+#   print(-1,zone.y[-1,int(zone.nt/2),:])
+
+
+
+  for idxp in ips:
+    # there is no z=0, so take the average from teh two closes ones.
+    # I checed this for an even nt, these are the two closes ones to z=0
+    # plot also the opposite site, should work for even grid numbers  
+    y1=(field[idxp,int(zone.nt/2),:]+field[idxp,int(zone.nt/2-1),:])/2.0
+    y2=(field[int(zone.np/2+idxp),int(zone.nt/2),:]+field[int(zone.np/2+idxp),int(zone.nt/2-1),:])/2.0
+    y=np.concatenate((np.flip(y2),y1))
+    
+    # what the "radius" so simply always take x at 0 
+    x1=zone.x[0,int(zone.nt/2),:]  
+    x2=-x1
+    #x2=zone.x[int(zone.np/2+idxp),int(zone.nt/2),:]  
+    x=np.concatenate((np.flip(x2),x1))    
+   
+    # the phi_grid gives different values from phi, (I gues phi_grid are the borders. 
+    # so better use phi here to be consistent
+    ax.plot(x,y,label=str((zone.phi[idxp,int(zone.nt/2),0]*u.rad).to(u.deg)))
+      
+  if ylim[0] is not None or ylim[1] is not None:
+    ax.set_ylim(ylim)
+  
+  ax.set_ylabel(ylabel)
+  ax.set_xlabel("r [au]")
+  #ax.semilogx()
+  ax.semilogy()
+  ax.legend()
+
+#   pdf.savefig(transparent=False)
+#   plt.close(fig)    
   return fig
 
   
