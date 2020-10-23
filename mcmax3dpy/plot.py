@@ -205,6 +205,8 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     ticks = ticker.MaxNLocator(nbins=6, prune="both").tick_values(vmin, vmax)
   
   
+    props = dict(boxstyle='round', facecolor='0.8', edgecolor="none")
+  
     """
     Vertical cut
     """
@@ -220,7 +222,8 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     #val=np.append(val,[val[zone.nt-1,:]],axis=0)
     #val=np.insert(val,0,[val[0,:]],axis=0)
     
-    ax=axes[0]
+    # switch them
+    ax=axes[1]
     CS = ax.contourf(x-x0, z-z0, val,levels=levels,extend="both",zorder=-20)    
     for c in CS.collections:
       c.set_edgecolor("face")         
@@ -250,8 +253,15 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
       c.set_edgecolor("face") 
     ax.set_rasterization_zorder(-19)    
     ax.set_aspect("equal")
-    ax.set_xlabel("y [au]",labelpad=0)
+    ax.set_xlabel("r [au]",labelpad=0)
     ax.set_ylabel("z [au]",labelpad=0)
+    
+    
+    ax.text(0.97, 0.96, r"$\phi=$"+"{:4.1f}".format((zone.phi[ip,int(zone.nt/2),0]*u.rad).to(u.deg)), 
+        transform=ax.transAxes, fontsize=6.0,
+        verticalalignment='top', horizontalalignment="right", bbox=props)
+    
+
     if clevels is not None:
       ax.contour(CS2, levels=clevels, colors=ccolors, linestyles="-",linewidths=0.5,zorder=0)
   
@@ -285,7 +295,8 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     y=np.append(y,[y[0,:]],axis=0)
     val=fieldlog[:,int(zone.nt/2),:]
     val=np.append(val,[val[0,:]],axis=0)
-    ax=axes[1]
+
+    ax=axes[0]
     CS3 = ax.contourf(x-x0,y-y0, val,levels=levels,extend="both",zorder=-20)      
       # This is the fix for the white lines between contour levels
     for c in CS3.collections:
@@ -298,6 +309,13 @@ def plot_cuts_zones(zones,fieldname,centerZoneIdx=None,
     ax.set_aspect("equal")
     ax.set_xlabel("x [au]",labelpad=0)
     ax.set_ylabel("y [au]",labelpad=0)
+    ax.text(0.96, 0.96, r"z=0", 
+        transform=ax.transAxes, fontsize=6.0,
+        verticalalignment='top', horizontalalignment="right", bbox=props)
+    
+    
+    ax.plot(x[ip],y[ip],color="0.8",linewidth="0.8",linestyle=":")
+    ax.plot(x[ip+int(zone.np/2)],y[ip+int(zone.np/2)],color="0.8",linewidth="0.8",linestyle=":")
     
     if patches is not None:
       for patch in patches:
@@ -524,7 +542,7 @@ def plot_radial_zone(zone,field,ylabel,ip=0,ylim=[None,None]):
    
     # the phi_grid gives different values from phi, (I gues phi_grid are the borders. 
     # so better use phi here to be consistent
-    ax.plot(x,y,label=str((zone.phi[idxp,int(zone.nt/2),0]*u.rad).to(u.deg)))
+    ax.plot(x,y,label=r"$\phi=$"+"{:4.1f}".format((zone.phi[idxp,int(zone.nt/2),0]*u.rad).to(u.deg)))
       
   if ylim[0] is not None or ylim[1] is not None:
     ax.set_ylim(ylim)
